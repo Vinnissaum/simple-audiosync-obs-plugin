@@ -10,6 +10,8 @@ The design is `.design/multi-camera-sync.md`; plan from it. Its Key decisions ar
 
 Each Key decision is recorded as an ADR in `docs/adr/` (MADR; index in `docs/adr/README.md`). ADRs are immutable: a changed decision gets a new ADR that supersedes the old one. ADR-005 (reusing Sync Dock's detector) and ADR-007 (measuring all cameras in one pass) stay Proposed until the Reading spikes pass.
 
+The technical design is `docs/tdd/multi-camera-sync.md`: how to build what the design describes, with the libobs findings that shape the measuring taps, the component architecture, the alignment arithmetic, the template build changes and the phased plan. Where it disagrees with the design or an ADR, they win.
+
 The pattern and its detector are reused from Audio Video Sync Dock (GPL-2.0-or-later), so this plugin is GPL-2.0-or-later as well. Keep the upstream copyright notices on anything taken from it.
 
 ## Repository state
