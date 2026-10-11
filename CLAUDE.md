@@ -16,7 +16,7 @@ The pattern and its detector are reused from Audio Video Sync Dock (GPL-2.0-or-l
 
 ## Repository state
 
-No code yet. The build will follow OBS's official plugin template: CMake presets, with CI building for Windows, macOS and Linux. Work starts with the Reading slice's two spikes. They need an OBS machine with two cameras that lag differently, a mic, and a phone to play the pattern. This WSL machine has no OBS, CMake or cameras, so testing happens on that OBS machine.
+No code yet. The build will follow OBS's official plugin template: CMake presets, with CI building for Windows, macOS and Linux. Work starts with the TDD's Foundation phase: the template scaffold, building and testing in CI. The Reading slice's two spikes follow and run inside it. They need an OBS machine with two cameras that lag differently, a mic, and a phone to play the pattern. This WSL machine has no OBS, CMake or cameras, so testing happens on that OBS machine.
 
 When the build lands, document here:
 
