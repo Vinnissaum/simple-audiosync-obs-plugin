@@ -4,15 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-A simple OBS Studio plugin that keeps the camera video and the audio in sync. It lets the user compensate for the delay between a camera source and an audio source (typically by applying a configurable offset), so the two line up in recordings and streams.
+An OBS Studio plugin that aligns several cameras with one mic. Each camera reaches OBS with its own lag, and one audio offset can only match one of them. A phone plays a test pattern where every camera can see it and the mic can hear it. The plugin measures every selected camera against the mic at the same time, then writes the corrections into OBS's own settings in one undoable Apply: a Video Delay (Async) filter on each camera and the mic's Sync Offset.
 
-Keep it small: one focused feature, minimal settings, no unrelated functionality.
+The design is `.design/multi-camera-sync.md`; plan from it. Its Key decisions are binding, and its Boundary lists what is deliberately out: drift, more than one mic, screen captures, and measuring without the pattern. Use its terms in code and prose: camera, mic, pattern, reading, alignment, Apply, Undo.
+
+The pattern and its detector are reused from Audio Video Sync Dock (GPL-2.0-or-later), so this plugin is GPL-2.0-or-later as well. Keep the upstream copyright notices on anything taken from it.
 
 ## Repository state
 
-Freshly initialized. No build system, source or tests exist yet. When they are added, document here:
+No code yet. The build will follow OBS's official plugin template: CMake presets, with CI building for Windows, macOS and Linux. Work starts with the Reading slice's two spikes. They need an OBS machine with two cameras that lag differently, a mic, and a phone to play the pattern. This WSL machine has no OBS, CMake or cameras, so testing happens on that OBS machine.
 
-- the toolchain and setup (OBS SDK / libobs version, compiler, CMake presets),
+When the build lands, document here:
+
+- the toolchain and setup (libobs version, compiler, CMake presets),
 - how to build, install and load the plugin into OBS,
 - how to run tests, including a single test.
 
@@ -46,11 +50,11 @@ Rules: shortcode form (`:sparkles:`), not the literal glyph. Lowercase descripti
 
 Situational emoji override the table when more specific: `:lock:` security, `:arrow_up:`/`:arrow_down:` dependency bumps, `:fire:` removing code, `:construction:` work in progress, `:tada:` project initialization.
 
-**Scopes** follow the plugin's areas: `sync` (offset/delay logic), `ui` (properties and settings), `build`, `docs`, `ci`.
+**Scopes** follow the design's slices: `reading` (measuring cameras against the mic), `alignment` (Apply and Undo), `release` (packaging and publishing). Changes that span the plugin, such as build setup, CI or cross-cutting docs, omit the scope.
 
 ```
 :tada: init project
-:sparkles: feat(sync): add configurable audio delay offset
-:bug: fix(ui): persist the offset between sessions
-:memo: docs(build): document cmake presets
+:sparkles: feat(reading): measure every selected camera against the mic
+:bug: fix(alignment): restore every value when a write fails
+:memo: docs: record the multi-camera sync design
 ```
