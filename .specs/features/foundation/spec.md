@@ -172,44 +172,44 @@ Implicit-requirement sweep, Medium scope: external-dependency failure is covered
 
 | Requirement ID | Story | Phase | Status |
 | -------------- | ----- | ----- | ------ |
-| FND-01 | P1: Builds and packages in CI | - | Pending |
-| FND-02 | P1: Builds and packages in CI | - | Pending |
-| FND-03 | P1: Builds and packages in CI | - | Pending |
-| FND-04 | P1: Builds and packages in CI | - | Pending |
-| FND-05 | P1: Builds and packages in CI | - | Pending |
-| FND-06 | P1: Builds and packages in CI | - | Pending |
-| FND-07 | P1: Builds and packages in CI | - | Pending |
-| FND-08 | P1: Builds and packages in CI | - | Pending |
-| FND-09 | P1: Builds and packages in CI | - | Pending |
-| FND-10 | P1: Builds and packages in CI | - | Pending |
-| FND-11 | P1: Builds and packages in CI | - | Pending |
-| FND-12 | P1: Builds and packages in CI | - | Pending |
-| FND-13 | P1: Unit tests run without OBS | - | Pending |
-| FND-14 | P1: Unit tests run without OBS | - | Pending |
-| FND-15 | P1: Unit tests run without OBS | - | Pending |
-| FND-16 | P1: Unit tests run without OBS | - | Pending |
-| FND-17 | P1: Unit tests run without OBS | - | Pending |
-| FND-18 | P1: Unit tests run without OBS | - | Pending |
-| FND-19 | P1: Empty dock loads | - | Pending |
-| FND-20 | P1: Empty dock loads | - | Pending |
-| FND-21 | P1: Empty dock loads | - | Pending |
-| FND-22 | P1: Empty dock loads | - | Pending |
-| FND-23 | P1: Empty dock loads | - | Pending |
-| FND-24 | P1: Empty dock loads | - | Pending |
-| FND-25 | P1: Detector and quirc in the core | - | Pending |
-| FND-26 | P1: Detector and quirc in the core | - | Pending |
-| FND-27 | P1: Detector and quirc in the core | - | Pending |
-| FND-28 | P1: Detector and quirc in the core | - | Pending |
-| FND-29 | P1: Detector and quirc in the core | - | Pending |
-| FND-30 | P1: Detector and quirc in the core | - | Pending |
-| FND-31 | P2: Build documented | - | Pending |
-| FND-32 | P2: Build documented | - | Pending |
-| FND-33 | P2: Build documented | - | Pending |
-| FND-34 | P2: Build documented | - | Pending |
+| FND-01 | P1: Builds and packages in CI | Tasks | In Tasks |
+| FND-02 | P1: Builds and packages in CI | Tasks | In Tasks |
+| FND-03 | P1: Builds and packages in CI | Tasks | In Tasks |
+| FND-04 | P1: Builds and packages in CI | Tasks | In Tasks |
+| FND-05 | P1: Builds and packages in CI | Tasks | In Tasks |
+| FND-06 | P1: Builds and packages in CI | Tasks | In Tasks |
+| FND-07 | P1: Builds and packages in CI | Tasks | In Tasks |
+| FND-08 | P1: Builds and packages in CI | Tasks | In Tasks |
+| FND-09 | P1: Builds and packages in CI | Tasks | In Tasks |
+| FND-10 | P1: Builds and packages in CI | Tasks | In Tasks |
+| FND-11 | P1: Builds and packages in CI | Tasks | In Tasks |
+| FND-12 | P1: Builds and packages in CI | Tasks | In Tasks |
+| FND-13 | P1: Unit tests run without OBS | Tasks | In Tasks |
+| FND-14 | P1: Unit tests run without OBS | Tasks | In Tasks |
+| FND-15 | P1: Unit tests run without OBS | Tasks | In Tasks |
+| FND-16 | P1: Unit tests run without OBS | Tasks | In Tasks |
+| FND-17 | P1: Unit tests run without OBS | Tasks | In Tasks |
+| FND-18 | P1: Unit tests run without OBS | Tasks | In Tasks |
+| FND-19 | P1: Empty dock loads | Tasks | In Tasks |
+| FND-20 | P1: Empty dock loads | Tasks | In Tasks |
+| FND-21 | P1: Empty dock loads | Tasks | In Tasks |
+| FND-22 | P1: Empty dock loads | Tasks | In Tasks |
+| FND-23 | P1: Empty dock loads | Tasks | In Tasks |
+| FND-24 | P1: Empty dock loads | Tasks | In Tasks |
+| FND-25 | P1: Detector and quirc in the core | Tasks | In Tasks |
+| FND-26 | P1: Detector and quirc in the core | Tasks | In Tasks |
+| FND-27 | P1: Detector and quirc in the core | Tasks | In Tasks |
+| FND-28 | P1: Detector and quirc in the core | Tasks | In Tasks |
+| FND-29 | P1: Detector and quirc in the core | Tasks | In Tasks |
+| FND-30 | P1: Detector and quirc in the core | Tasks | In Tasks |
+| FND-31 | P2: Build documented | Tasks | In Tasks |
+| FND-32 | P2: Build documented | Tasks | In Tasks |
+| FND-33 | P2: Build documented | Tasks | In Tasks |
+| FND-34 | P2: Build documented | Tasks | In Tasks |
 
 **ID format:** `FND-NN`. The TDD suggests no IDs for phase 0; READ, ALIGN and REL stay reserved for the later slices.
 
-**Coverage:** 34 total, 0 mapped to tasks, 34 unmapped until Tasks.
+**Coverage:** 34 total, 34 mapped to tasks in `tasks.md`, 0 unmapped.
 
 ---
 
