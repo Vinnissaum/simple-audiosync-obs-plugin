@@ -262,9 +262,9 @@ T14 → T16
 
 **Done when**:
 
-- [ ] Every file in `core/`, `tests/` and `cmake/camera-sync/` is formatted.
-- [ ] Verified once on a scratch branch that is never merged: a misformatted `core/` file turns Check Formatting red.
-- [ ] CI gate passes with Check Formatting green.
+- [x] Every file in `core/`, `tests/` and `cmake/camera-sync/` is formatted.
+- [x] Verified once on a scratch branch that is never merged: a misformatted `core/` file turns Check Formatting red.
+- [x] CI gate passes with Check Formatting green.
 
 **Tests**: none
 **Gate**: ci
