@@ -118,13 +118,13 @@ T14 → T16
 
 **Done when**:
 
-- [ ] `buildspec.json`: `name` `camera-sync`, `displayName` "Camera Sync", `version` `0.1.0`, `author` "Vinicius Braz", `website` the GitHub repository URL, `email` the maintainer's address, macOS `bundleId` `io.github.vinnissaum.camera-sync`. OBS stays at the template's 31.1.1 until T7.
-- [ ] `.gitignore` keeps the template's allowlist and adds `CLAUDE.md`, `.claude/`, `.agents/`, `.design/`, `.specs/`, `docs/`, `core/`, `tests/`, `third_party/` and `deps/`, so new files there are not ignored; `git status --ignored` lists none of them.
-- [ ] `LICENSE` is the template's GPL-2.0 text, unchanged.
-- [ ] `src/plugin-main.c` starts with `// SPDX-License-Identifier: GPL-2.0-or-later`, and its header block names "Camera Sync" and "Copyright (C) 2026 Vinicius Braz" in place of the template placeholders.
-- [ ] `README.md` is replaced by one paragraph on what the plugin does and links to the design, the TDD and the ADRs.
-- [ ] The scaffold commit's body records the template commit `3e7d7ac`.
-- [ ] CI gate passes: the four template jobs green, with a `camera-sync-0.1.0` Windows .zip, macOS .pkg and Ubuntu .deb attached.
+- [x] `buildspec.json`: `name` `camera-sync`, `displayName` "Camera Sync", `version` `0.1.0`, `author` "Vinicius Braz", `website` the GitHub repository URL, `email` the maintainer's address, macOS `bundleId` `io.github.vinnissaum.camera-sync`. OBS stays at the template's 31.1.1 until T7.
+- [x] `.gitignore` keeps the template's allowlist and adds `CLAUDE.md`, `.claude/`, `.agents/`, `.design/`, `.specs/`, `docs/`, `core/`, `tests/`, `third_party/` and `deps/`, so new files there are not ignored; `git status --ignored` lists none of them.
+- [x] `LICENSE` is the template's GPL-2.0 text, unchanged.
+- [x] `src/plugin-main.c` starts with `// SPDX-License-Identifier: GPL-2.0-or-later`, and its header block names "Camera Sync" and "Copyright (C) 2026 Vinicius Braz" in place of the template placeholders.
+- [x] `README.md` is replaced by one paragraph on what the plugin does and links to the design, the TDD and the ADRs.
+- [x] The scaffold commit's body records the template commit `3e7d7ac`.
+- [x] CI gate passes: the four template jobs green, with a `camera-sync-0.1.0` Windows .zip, macOS .pkg and Ubuntu .deb attached.
 
 **Tests**: none
 **Gate**: ci
