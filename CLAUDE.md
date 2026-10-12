@@ -62,7 +62,7 @@ Use the CI artifacts, or the files a local build puts under `release/`. Restart 
 
 - Windows: unzip the .zip into `%ProgramData%\obs-studio\plugins\`, so that `camera-sync\bin\64bit\camera-sync.dll` and `camera-sync\data\locale\en-US.ini` exist. For a portable OBS, copy the DLL to `<OBS>\obs-plugins\64bit\` and the `data` folder to `<OBS>\data\obs-plugins\camera-sync\`.
 - macOS: run the .pkg, or copy `camera-sync.plugin` to `~/Library/Application Support/obs-studio/plugins/`. The package is unsigned, so macOS asks you to allow it.
-- Ubuntu: `sudo apt install ./camera-sync-0.1.0-ubuntu-24.04-x86_64.deb`. The package depends on `obs-studio (>= 30.0.0)`.
+- Ubuntu: `sudo apt install ./camera-sync-0.1.0-x86_64-linux-gnu.deb`. The package depends on `obs-studio (>= 30.0.0)`.
 
 ## Tests
 
