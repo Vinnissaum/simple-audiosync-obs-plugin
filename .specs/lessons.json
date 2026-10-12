@@ -1,0 +1,135 @@
+{
+  "schema": 1,
+  "promote_threshold": 2,
+  "window_days": 45,
+  "quarantine_threshold": 2,
+  "next_id": 8,
+  "lessons": [
+    {
+      "id": "L-001",
+      "key": "surviving_mutant::a file scanning check s fixture plants one violating file in every directory and file type the check claims to cover",
+      "text": "A file-scanning check's fixture plants one violating file in every directory and file type the check claims to cover",
+      "signal": "surviving_mutant",
+      "scope": "cmake-checks",
+      "status": "candidate",
+      "features": [
+        "foundation"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "M12,M13,M14,M16 tests/cmake/check-notices-fixture.cmake:67-69 (cmake-checks)"
+      ],
+      "created": "2026-10-12T16:12:40Z",
+      "last_seen": "2026-10-12T16:12:40Z"
+    },
+    {
+      "id": "L-002",
+      "key": "surviving_mutant::decoder fixtures carry values that set every bit of the decoded field and include a corrupted input the decoder must reject",
+      "text": "Decoder fixtures carry values that set every bit of the decoded field and include a corrupted input the decoder must reject",
+      "signal": "surviving_mutant",
+      "scope": "detector",
+      "status": "candidate",
+      "features": [
+        "foundation"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "M25,M26 core/detector/audio-detector.cpp:83,97 (detector)"
+      ],
+      "created": "2026-10-12T16:12:40Z",
+      "last_seen": "2026-10-12T16:12:40Z"
+    },
+    {
+      "id": "L-003",
+      "key": "spec_precision_gap::bit field unpacking tests use values that set the high bits of each field or the spec states the field s range",
+      "text": "Bit-field unpacking tests use values that set the high bits of each field, or the spec states the field's range",
+      "signal": "spec_precision_gap",
+      "scope": "core",
+      "status": "candidate",
+      "features": [
+        "foundation"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "M1,M2 core/load-line.cpp:9-10 (core)"
+      ],
+      "created": "2026-10-12T16:12:40Z",
+      "last_seen": "2026-10-12T16:12:40Z"
+    },
+    {
+      "id": "L-004",
+      "key": "ac_gap::run documented build commands with only the tools the spec names on path and name every tool a preset requires",
+      "text": "Run documented build commands with only the tools the spec names on PATH, and name every tool a preset requires",
+      "signal": "ac_gap",
+      "scope": "build",
+      "status": "candidate",
+      "features": [
+        "foundation"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "FND-15 CMakePresets.json:22 (build)"
+      ],
+      "created": "2026-10-12T16:12:40Z",
+      "last_seen": "2026-10-12T16:12:40Z"
+    },
+    {
+      "id": "L-005",
+      "key": "ac_gap::take documented package file names from the packaging configuration not from ci artifact names",
+      "text": "Take documented package file names from the packaging configuration, not from CI artifact names",
+      "signal": "ac_gap",
+      "scope": "docs",
+      "status": "candidate",
+      "features": [
+        "foundation"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "FND-32 CLAUDE.md:65 (docs)"
+      ],
+      "created": "2026-10-12T16:12:40Z",
+      "last_seen": "2026-10-12T16:12:40Z"
+    },
+    {
+      "id": "L-006",
+      "key": "ac_gap::dependency hash checks re verify archives already on disk not only fresh downloads",
+      "text": "Dependency hash checks re-verify archives already on disk, not only fresh downloads",
+      "signal": "ac_gap",
+      "scope": "build",
+      "status": "candidate",
+      "features": [
+        "foundation"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "FND-08 cmake/common/buildspec_common.cmake:207 (build)"
+      ],
+      "created": "2026-10-12T16:12:40Z",
+      "last_seen": "2026-10-12T16:12:40Z"
+    },
+    {
+      "id": "L-007",
+      "key": "spec_precision_gap::acs that inherit template ci behaviour state which events and which files they cover",
+      "text": "ACs that inherit template CI behaviour state which events and which files they cover",
+      "signal": "spec_precision_gap",
+      "scope": "ci",
+      "status": "candidate",
+      "features": [
+        "foundation"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "FND-02,FND-07,FND-11 .github/workflows/build-project.yaml:36 (ci)"
+      ],
+      "created": "2026-10-12T16:12:40Z",
+      "last_seen": "2026-10-12T16:12:40Z"
+    }
+  ]
+}
