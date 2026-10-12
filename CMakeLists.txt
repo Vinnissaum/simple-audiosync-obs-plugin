@@ -37,6 +37,10 @@ add_subdirectory(tests)
 add_library(${CMAKE_PROJECT_NAME} MODULE)
 
 find_package(libobs REQUIRED)
+
+include(cmake/camera-sync/check-libobs-version.cmake)
+camera_sync_check_libobs_version("${libobs_VERSION}")
+
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::libobs)
 
 if(ENABLE_FRONTEND_API)

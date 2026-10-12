@@ -23,3 +23,17 @@ add_test(
 )
 
 add_test(NAME check_notices_repository COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -P ${check_notices})
+
+# The libobs version guard. One case per version.
+set(check_libobs ${PROJECT_SOURCE_DIR}/cmake/camera-sync/check-libobs-version.cmake)
+set(libobs_case ${CMAKE_CURRENT_SOURCE_DIR}/cmake/check-libobs-version-case.cmake)
+
+foreach(entry 31.1.1:fail 30.1.0:fail 30.0.0:pass 30.0.2:pass)
+  string(REPLACE ":" ";" parts ${entry})
+  list(GET parts 0 version)
+  list(GET parts 1 expect)
+  add_test(
+    NAME check_libobs_version_${version}_${expect}
+    COMMAND ${CMAKE_COMMAND} -DCHECK_SCRIPT=${check_libobs} -DVERSION=${version} -DEXPECT=${expect} -P ${libobs_case}
+  )
+endforeach()

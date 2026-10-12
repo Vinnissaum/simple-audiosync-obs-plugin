@@ -348,10 +348,10 @@ T14 → T16
 
 **Done when**:
 
-- [ ] The failure message is exactly `Camera Sync builds against libobs 30.0.x; found <version>`.
-- [ ] The version comes from `libobs_VERSION` if 30.0.2's package config sets it, and from `LIBOBS_API_MAJOR_VER` and `LIBOBS_API_MINOR_VER` in `obs-config.h` otherwise. The task records which one it used.
-- [ ] CTest cases: `31.1.1` fails with the message naming `31.1.1`; `30.1.0` fails; `30.0.0` and `30.0.2` pass.
-- [ ] Quick gate passes, then CI gate passes on all three platforms (the guard accepts 30.0.2 everywhere).
+- [x] The failure message is exactly `Camera Sync builds against libobs 30.0.x; found <version>`.
+- [x] The version comes from `libobs_VERSION` if 30.0.2's package config sets it, and from `LIBOBS_API_MAJOR_VER` and `LIBOBS_API_MINOR_VER` in `obs-config.h` otherwise. The task records which one it used. Used: `libobs_VERSION`. 30.0.2's libobsConfigVersion.cmake sets it on Windows, macOS and Ubuntu (CI passes the guard on all three), so the `obs-config.h` fallback is not built.
+- [x] CTest cases: `31.1.1` fails with the message naming `31.1.1`; `30.1.0` fails; `30.0.0` and `30.0.2` pass.
+- [x] Quick gate passes, then CI gate passes on all three platforms (the guard accepts 30.0.2 everywhere).
 
 **Tests**: unit
 **Gate**: quick, then ci
