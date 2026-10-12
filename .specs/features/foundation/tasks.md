@@ -377,11 +377,11 @@ T14 → T16
 
 **Done when**:
 
-- [ ] `git submodule status deps/quirc` shows `542848dd6b9b0eaa9587bbf25b9bc67bd8a71fca`.
-- [ ] quirc's `lib/*.c` compile into the core with quirc's own warnings kept out of the project's warnings-as-errors.
-- [ ] A doctest case creates a decoder, sizes it to 640×360 and destroys it.
-- [ ] A CTest case runs the submodule check against a missing path and passes only on the message `quirc submodule missing - run: git submodule update --init`.
-- [ ] Quick gate passes. Test count: previous cases plus 2.
+- [x] `git submodule status deps/quirc` shows `542848dd6b9b0eaa9587bbf25b9bc67bd8a71fca`.
+- [x] quirc's `lib/*.c` compile into the core with quirc's own warnings kept out of the project's warnings-as-errors. They build as the static library `camera-sync-quirc`, which the core links publicly, with `COMPILE_WARNING_AS_ERROR` off and `-w` on GCC and Clang.
+- [x] A doctest case creates a decoder, sizes it to 640×360 and destroys it.
+- [x] A CTest case runs the submodule check against a missing path and passes only on the message `quirc submodule missing - run: git submodule update --init`. A second case runs it against the real checkout and passes.
+- [x] Quick gate passes. Test count: previous cases plus 2. Ran 18, which is 15 plus 3: the accept case is the third.
 
 **Tests**: unit
 **Gate**: quick

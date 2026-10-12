@@ -3,7 +3,7 @@ include("${PROJECT_SOURCE_DIR}/third_party/doctest/doctest.cmake")
 
 add_executable(camera-sync-tests)
 
-target_sources(camera-sync-tests PRIVATE main.cpp core/load-line.cpp)
+target_sources(camera-sync-tests PRIVATE main.cpp core/load-line.cpp detector/quirc.cpp)
 
 target_include_directories(camera-sync-tests SYSTEM PRIVATE ${PROJECT_SOURCE_DIR}/third_party)
 
@@ -37,3 +37,21 @@ foreach(entry 31.1.1:fail 30.1.0:fail 30.0.0:pass 30.0.2:pass)
     COMMAND ${CMAKE_COMMAND} -DCHECK_SCRIPT=${check_libobs} -DVERSION=${version} -DEXPECT=${expect} -P ${libobs_case}
   )
 endforeach()
+
+# The submodule check. One case with the checkout missing and one with it present.
+set(require_submodule ${PROJECT_SOURCE_DIR}/cmake/camera-sync/require-submodule.cmake)
+set(submodule_case ${CMAKE_CURRENT_SOURCE_DIR}/cmake/require-submodule-case.cmake)
+set(quirc_marker ${PROJECT_SOURCE_DIR}/deps/quirc/lib/quirc.c)
+set(missing_marker ${CMAKE_CURRENT_BINARY_DIR}/no-such-submodule/lib/quirc.c)
+
+add_test(
+  NAME require_submodule_missing_fail
+  COMMAND
+    ${CMAKE_COMMAND} -DCHECK_SCRIPT=${require_submodule} -DMARKER=${missing_marker} -DEXPECT=fail -P ${submodule_case}
+)
+
+add_test(
+  NAME require_submodule_present_pass
+  COMMAND
+    ${CMAKE_COMMAND} -DCHECK_SCRIPT=${require_submodule} -DMARKER=${quirc_marker} -DEXPECT=pass -P ${submodule_case}
+)
