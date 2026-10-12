@@ -17,7 +17,10 @@ set(CPACK_PACKAGE_VERSION "${CMAKE_PROJECT_VERSION}")
 set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CMAKE_C_LIBRARY_ARCHITECTURE}")
 
 set(CPACK_GENERATOR "DEB")
-set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+# The .deb names its one OBS dependency itself, with no upper bound, because dpkg-shlibdeps would pin the exact
+# libobs the build linked against.
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS OFF)
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "obs-studio (>= 30.0.0)")
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "${PLUGIN_EMAIL}")
 set(CPACK_SET_DESTDIR ON)
 
@@ -35,6 +38,7 @@ set(
   \\.github/
   \\.gitignore
   \\.ccache/
+  \\.deps/
   build_.*
   cmake/\\.CMakeBuildNumber
   release/
@@ -45,6 +49,8 @@ set(CPACK_SOURCE_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSIO
 set(CPACK_ARCHIVE_THREADS 0)
 
 include(CPack)
+
+include(buildspec)
 
 find_package(libobs QUIET)
 

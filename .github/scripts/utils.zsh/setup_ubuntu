@@ -35,14 +35,36 @@ if (( ! (${skips[(Ie)all]} + ${skips[(Ie)deps]}) )) {
     sudo apt-get install ${apt_args} gcc-${${target##*-}//_/-}-linux-gnu g++-${${target##*-}//_/-}-linux-gnu
   }
 
-  sudo add-apt-repository --yes ppa:obsproject/obs-studio
-  sudo apt update
+  sudo apt-get update
 
+  # The build dependencies of libobs and obs-frontend-api from OBS 30.0.2, which cmake/linux/buildspec.cmake builds
   sudo apt-get install ${apt_args} \
     build-essential \
+    libavcodec-dev \
+    libavdevice-dev \
+    libavfilter-dev \
+    libavformat-dev \
+    libavutil-dev \
+    libcurl4-openssl-dev \
+    libdrm-dev \
+    libgl1-mesa-dev \
     libgles2-mesa-dev \
+    libglib2.0-dev \
+    libglvnd-dev \
+    libjansson-dev \
+    libpci-dev \
+    libpulse-dev \
     libsimde-dev \
-    obs-studio
+    libswresample-dev \
+    libswscale-dev \
+    libwayland-dev \
+    libx11-dev \
+    libx11-xcb-dev \
+    libxcb-xinput-dev \
+    libxcb1-dev \
+    libxkbcommon-dev \
+    uuid-dev \
+    zlib1g-dev
 
   local -a _qt_packages=()
 

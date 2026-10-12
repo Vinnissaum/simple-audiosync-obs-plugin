@@ -319,12 +319,12 @@ T14 → T16
 
 **Done when**:
 
-- [ ] The OBS source archive is downloaded with `EXPECTED_HASH` from the `ubuntu-x86_64` hash in `buildspec.json`.
-- [ ] `setup_ubuntu` installs OBS 30.0.2's build dependencies from Ubuntu 24.04 and no longer adds `ppa:obsproject/obs-studio`.
-- [ ] The .deb is built with `CPACK_DEBIAN_PACKAGE_SHLIBDEPS` off and `CPACK_DEBIAN_PACKAGE_DEPENDS` set to `obs-studio (>= 30.0.0)`.
-- [ ] A CI step fails the job unless `dpkg-deb -f <package> Depends` prints exactly `obs-studio (>= 30.0.0)`.
-- [ ] CI gate passes for Ubuntu.
-- [ ] If this costs more than one working day, stop and take the spec's fallback (an ubuntu-22.04 runner with a prebuilt OBS 30 development environment, as Sync Dock does). Record the switch in `.specs/STATE.md` before continuing.
+- [x] The OBS source archive is downloaded with `EXPECTED_HASH` from the `ubuntu-x86_64` hash in `buildspec.json`.
+- [x] `setup_ubuntu` installs OBS 30.0.2's build dependencies from Ubuntu 24.04 and no longer adds `ppa:obsproject/obs-studio`.
+- [x] The .deb is built with `CPACK_DEBIAN_PACKAGE_SHLIBDEPS` off and `CPACK_DEBIAN_PACKAGE_DEPENDS` set to `obs-studio (>= 30.0.0)`.
+- [x] A CI step fails the job unless `dpkg-deb -f <package> Depends` prints exactly `obs-studio (>= 30.0.0)`.
+- [x] CI gate passes for Ubuntu.
+- [x] If this costs more than one working day, stop and take the spec's fallback (an ubuntu-22.04 runner with a prebuilt OBS 30 development environment, as Sync Dock does). Record the switch in `.specs/STATE.md` before continuing. Not needed: the source route took a few CI iterations, so STATE.md is untouched.
 
 **Tests**: none
 **Gate**: ci
