@@ -405,12 +405,14 @@ T14 → T16
 
 **Done when**:
 
-- [ ] Each derived file starts with Sync Dock's notice verbatim (`Copyright (C) 2023 Norihiro Kamae` and the GPL-2.0-or-later text), followed by `Derived from Audio Video Sync Dock, <upstream path> at e4ad2941ed5f2982e9f17b76ebaf22096319f3cb`.
-- [ ] T4's check covers `core/detector/`: each file there must hold the upstream notice and the provenance line, and a CTest fixture with the line removed fails naming the file.
-- [ ] `tests/fixtures/generate.sh` regenerates the fixture with Sync Dock's `videogen.py` (`q=4,f=884,c=2`, 60 fps, 320×180), and the fixture is one QR frame's luma plane as a binary PGM.
-- [ ] A doctest case feeds that frame to the vendored QR decoding and checks exactly the payload values it was generated with: `f=884`, `c=2`, the frame's `q_ms`, its index and `index_max=256`.
-- [ ] The core-only build compiles the vendored files with no libobs header on the include path.
-- [ ] Quick gate passes. Test count: previous cases plus at least 2.
+- [x] Each derived file starts with Sync Dock's notice verbatim (`Copyright (C) 2023 Norihiro Kamae` and the GPL-2.0-or-later text), followed by `Derived from Audio Video Sync Dock, <upstream path> at e4ad2941ed5f2982e9f17b76ebaf22096319f3cb`.
+- [x] T4's check covers `core/detector/`: each file there must hold the upstream notice and the provenance line, and a CTest fixture with the line removed fails naming the file. The notice is `cmake/camera-sync/sync-dock-notice.txt`, the exact bytes of lines 1 to 18 of upstream `src/sync-test-output.cpp`, and a file must start with it and, on the next line, `// Derived from Audio Video Sync Dock, src/<path> at <commit>`. The fixture also names a file with an altered notice and one with another commit.
+- [x] `tests/fixtures/generate.sh` regenerates the fixture with Sync Dock's `videogen.py` (`q=4,f=884,c=2`, 60 fps, 320×180), and the fixture is one QR frame's luma plane as a binary PGM. `generate.sh` pins the commit and calls `generate.py`, which drives the generator's frame and sound classes directly, so ffmpeg is not needed. Rerunning it reproduces the committed files byte for byte.
+- [x] A doctest case feeds that frame to the vendored QR decoding and checks exactly the payload values it was generated with: `f=884`, `c=2`, the frame's `q_ms`, its index and `index_max=256`.
+- [x] The core-only build compiles the vendored files with no libobs header on the include path.
+- [x] Quick gate passes. Test count: previous cases plus at least 2. Ran 22, which is 18 plus 4: the QR frame decode, a frame without a QR code, the payload keys and the range checks.
+
+**Notes**: The core media types (`core/media.hpp`) and the logger (`core/log.hpp`) sit in `core/`, not `core/detector/`. They are not derived from Sync Dock, so they keep the SPDX line, and `core/detector/` holds only files that carry Sync Dock's notice. The detector reports the frames' own timestamps, where Sync Dock subtracted its first frame's, because Reading pairs a camera with the mic on one clock. Sync Dock's pairing list (`sync_indices`) is not vendored; Reading builds the per-camera pairing.
 
 **Tests**: unit
 **Gate**: quick

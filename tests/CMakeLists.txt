@@ -3,7 +3,9 @@ include("${PROJECT_SOURCE_DIR}/third_party/doctest/doctest.cmake")
 
 add_executable(camera-sync-tests)
 
-target_sources(camera-sync-tests PRIVATE main.cpp core/load-line.cpp detector/quirc.cpp)
+target_sources(camera-sync-tests PRIVATE main.cpp core/load-line.cpp detector/quirc.cpp detector/video-detector.cpp)
+
+target_compile_definitions(camera-sync-tests PRIVATE CAMERA_SYNC_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
 
 target_include_directories(camera-sync-tests SYSTEM PRIVATE ${PROJECT_SOURCE_DIR}/third_party)
 
