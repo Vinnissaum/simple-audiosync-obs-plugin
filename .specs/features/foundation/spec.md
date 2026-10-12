@@ -180,7 +180,7 @@ Implicit-requirement sweep, Medium scope: external-dependency failure is covered
 | FND-06 | P1: Builds and packages in CI | Tasks | In Tasks |
 | FND-07 | P1: Builds and packages in CI | Tasks | In Tasks |
 | FND-08 | P1: Builds and packages in CI | Tasks | In Tasks |
-| FND-09 | P1: Builds and packages in CI | Tasks | In Tasks |
+| FND-09 | P1: Builds and packages in CI | Tasks | Done (T2) |
 | FND-10 | P1: Builds and packages in CI | Tasks | In Tasks |
 | FND-11 | P1: Builds and packages in CI | Tasks | In Tasks |
 | FND-12 | P1: Builds and packages in CI | Tasks | Partial (T1 done, T4 pending) |

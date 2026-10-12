@@ -148,9 +148,9 @@ T14 → T16
 
 **Done when**:
 
-- [ ] Each SHA resolved with `git ls-remote` against the action's repository for the tag in use.
-- [ ] `grep -rnE 'uses: [^.][^@]*@' .github | grep -vE '@[0-9a-f]{40}( |$)'` prints nothing.
-- [ ] CI gate passes.
+- [x] Each SHA resolved with `git ls-remote` against the action's repository for the tag in use.
+- [x] `grep -rnE 'uses: [^.][^@]*@' .github | grep -vE '@[0-9a-f]{40}( |$)'` prints nothing.
+- [x] CI gate passes.
 
 **Tests**: none
 **Gate**: ci
