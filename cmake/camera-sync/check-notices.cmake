@@ -86,11 +86,9 @@ if(unmarked)
 endif()
 if(underived)
   list(JOIN underived "\n  " underived_text)
-  string(
-    APPEND problems
-    "The file must start with Sync Dock's notice, then '// Derived from Audio Video Sync Dock, <upstream path> at "
-    "${derived_commit}', in:\n  ${underived_text}\n"
-  )
+  set(derived_line "'// Derived from Audio Video Sync Dock, <upstream path> at ${derived_commit}'")
+  set(derived_help "The file must start with Sync Dock's notice, then ${derived_line}, in:")
+  string(APPEND problems "${derived_help}\n  ${underived_text}\n")
 endif()
 if(problems)
   message(FATAL_ERROR "${problems}")
