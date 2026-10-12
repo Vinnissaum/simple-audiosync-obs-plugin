@@ -525,11 +525,11 @@ T14 → T16
 
 **Done when**:
 
-- [ ] States OBS 30.0.2 headers with obs-deps and Qt `2023-11-03`, the compiler per platform (Visual Studio 2022, Xcode, the Ubuntu 24.04 GCC), CMake 3.28, and every preset name.
-- [ ] Gives the build command per platform, and the plugin's install location in OBS on Windows, macOS and Ubuntu.
-- [ ] Gives the quick gate's commands and `ctest --preset core -R <name>` for a single test.
-- [ ] The Repository state section no longer says there is no code.
-- [ ] The documented core-only commands run verbatim on WSL and pass.
+- [x] States OBS 30.0.2 headers with obs-deps and Qt `2023-11-03`, the compiler per platform (Visual Studio 2022, Xcode, the Ubuntu 24.04 GCC), CMake 3.28, and every preset name.
+- [x] Gives the build command per platform, and the plugin's install location in OBS on Windows, macOS and Ubuntu.
+- [x] Gives the quick gate's commands and `ctest --preset core -R <name>` for a single test.
+- [x] The Repository state section no longer says there is no code.
+- [x] The documented core-only commands run verbatim on WSL and pass. Run from a fresh clone with `--recurse-submodules` and no network (`unshare -rn`): the quick gate passes 24 tests, and `ctest --preset core`, `-R load_line` (6 tests), `-R "check_notices_fixture"` (1 test) and `-N` run as written. The Windows, macOS and Ubuntu build and install commands are not run here; they come from the template's scripts and presets and the CI artifacts' layout.
 
 **Tests**: none
 **Gate**: quick
