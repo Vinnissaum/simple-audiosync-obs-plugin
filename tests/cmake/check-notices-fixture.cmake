@@ -44,9 +44,10 @@ endfunction()
 file(REMOVE_RECURSE "${WORK_DIR}")
 
 # Marked files the check must accept.
-write_fixture(CMakeLists.txt "${hash} ${spdx}")
 write_fixture(src/good-source.cpp "// ${spdx}")
+write_fixture(src/good-source.c "// ${spdx}")
 write_fixture(core/good-header.hpp "// ${spdx}")
+write_fixture(core/good-header.h "// ${spdx}")
 write_fixture(tests/good-test.cpp "// ${spdx}")
 write_fixture(cmake/camera-sync/good-check.cmake "${hash} ${spdx}")
 
@@ -64,7 +65,12 @@ write_derived(core/detector/good-detector.cpp "${notice}" "${provenance}")
 write_derived(core/detector/good-detector.hpp "${notice}" "${provenance}")
 
 # Files the check must name.
+write_fixture(CMakeLists.txt "${hash} template line")
 write_fixture(src/unmarked-source.cpp "// Copyright (C) somebody")
+write_fixture(src/unmarked-c-source.c "// Copyright (C) somebody")
+write_fixture(core/unmarked-c-header.h "// Copyright (C) somebody")
+write_fixture(tests/unmarked-test.cpp "// Copyright (C) somebody")
+write_fixture(cmake/camera-sync/unmarked-check.cmake "${hash} Copyright (C) somebody")
 write_fixture(core/unmarked-second-line.hpp "// first line")
 file(APPEND "${WORK_DIR}/core/unmarked-second-line.hpp" "// ${spdx}\n")
 
@@ -83,6 +89,10 @@ endif()
 foreach(
   named
   src/unmarked-source.cpp
+  src/unmarked-c-source.c
+  core/unmarked-c-header.h
+  tests/unmarked-test.cpp
+  cmake/camera-sync/unmarked-check.cmake
   core/unmarked-second-line.hpp
   core/detector/missing-provenance.cpp
   core/detector/missing-notice.cpp
@@ -94,11 +104,16 @@ foreach(
     message(FATAL_ERROR "check-notices did not name ${named}. Output:\n${check_output}")
   endif()
 endforeach()
+# The top-level CMakeLists.txt is named on its own, not as the tail of another path.
+if(NOT check_output MATCHES "(^|[ \n])CMakeLists\\.txt")
+  message(FATAL_ERROR "check-notices did not name CMakeLists.txt. Output:\n${check_output}")
+endif()
 foreach(
   silent
-  CMakeLists.txt
   src/good-source.cpp
+  src/good-source.c
   core/good-header.hpp
+  core/good-header.h
   tests/good-test.cpp
   cmake/camera-sync/good-check.cmake
   skipped-common.cmake
@@ -118,7 +133,12 @@ foreach(
 endforeach()
 
 # With the line on the first line of every checked file, the check passes.
+write_fixture(CMakeLists.txt "${hash} ${spdx}")
 write_fixture(src/unmarked-source.cpp "// ${spdx}")
+write_fixture(src/unmarked-c-source.c "// ${spdx}")
+write_fixture(core/unmarked-c-header.h "// ${spdx}")
+write_fixture(tests/unmarked-test.cpp "// ${spdx}")
+write_fixture(cmake/camera-sync/unmarked-check.cmake "${hash} ${spdx}")
 write_fixture(core/unmarked-second-line.hpp "// ${spdx}")
 foreach(fixed missing-provenance missing-notice altered-notice other-commit)
   write_derived(core/detector/${fixed}.cpp "${notice}" "${provenance}")
