@@ -71,6 +71,34 @@ jobs:
             echo "pluginName=${plugin_name}" >> $GITHUB_OUTPUT
           fi
 
+  core-build:
+    name: Build and Test Core 🧪
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+
+      - name: Install Build Tools 🔧
+        run: |
+          : Install Build Tools 🔧
+          if [[ "${RUNNER_DEBUG}" ]]; then set -x; fi
+
+          sudo apt-get update
+          sudo apt-get install --yes cmake ninja-build
+
+      - name: Build and Test Core 🧪
+        run: |
+          : Build and Test Core 🧪
+          if [[ "${RUNNER_DEBUG}" ]]; then set -x; fi
+
+          cmake --preset core
+          cmake --build --preset core
+          ctest --preset core --output-on-failure
+
   macos-build:
     name: Build for macOS 🍏
     runs-on: macos-15
@@ -141,6 +169,13 @@ jobs:
           config: ${{ needs.check-event.outputs.config }}
           codesign: ${{ fromJSON(needs.check-event.outputs.codesign) }}
           codesignIdent: ${{ steps.codesign.outputs.codesignIdent }}
+
+      - name: Run Unit Tests ✅
+        run: |
+          : Run Unit Tests ✅
+          # The macOS build step builds only the plugin target, so the test executable is built here
+          cmake --build build_macos --config ${{ needs.check-event.outputs.config }} --target camera-sync-tests
+          ctest --test-dir build_macos -C ${{ needs.check-event.outputs.config }} --output-on-failure
 
       - name: Package Plugin 📀
         uses: ./.github/actions/package-plugin
@@ -217,6 +252,9 @@ jobs:
           target: x86_64
           config: ${{ needs.check-event.outputs.config }}
 
+      - name: Run Unit Tests ✅
+        run: ctest --test-dir build_x86_64 -C ${{ needs.check-event.outputs.config }} --output-on-failure
+
       - name: Package Plugin 📀
         uses: ./.github/actions/package-plugin
         with:
@@ -282,6 +320,9 @@ jobs:
         with:
           target: x64
           config: ${{ needs.check-event.outputs.config }}
+
+      - name: Run Unit Tests ✅
+        run: ctest --test-dir build_x64 -C ${{ needs.check-event.outputs.config }} --output-on-failure
 
       - name: Package Plugin 📀
         uses: ./.github/actions/package-plugin

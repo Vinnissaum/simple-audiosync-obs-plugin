@@ -235,10 +235,10 @@ T14 → T16
 
 **Done when**:
 
-- [ ] Windows, macOS and Ubuntu jobs each run `ctest -C RelWithDebInfo --output-on-failure` in their build directory, and a failing test fails the job.
-- [ ] The core-only job checks out submodules, installs only CMake and Ninja, and runs the quick gate's commands.
-- [ ] Verified once on a scratch branch that is never merged: a deliberately failing test turns each of the four jobs red.
-- [ ] Quick gate passes, then CI gate passes with the core-only job green.
+- [x] Windows, macOS and Ubuntu jobs each run `ctest -C RelWithDebInfo --output-on-failure` in their build directory, and a failing test fails the job.
+- [x] The core-only job checks out submodules, installs only CMake and Ninja, and runs the quick gate's commands.
+- [x] Verified once on a scratch branch that is never merged: a deliberately failing test turns each of the four jobs red.
+- [x] Quick gate passes, then CI gate passes with the core-only job green.
 
 **Tests**: unit
 **Gate**: ci

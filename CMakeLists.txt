@@ -29,6 +29,11 @@ include(compilerconfig)
 include(defaults)
 include(helpers)
 
+add_subdirectory(core)
+
+enable_testing()
+add_subdirectory(tests)
+
 add_library(${CMAKE_PROJECT_NAME} MODULE)
 
 find_package(libobs REQUIRED)

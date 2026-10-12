@@ -187,8 +187,8 @@ Implicit-requirement sweep, Medium scope: external-dependency failure is covered
 | FND-13 | P1: Unit tests run without OBS | Tasks | Done (T3) |
 | FND-14 | P1: Unit tests run without OBS | Tasks | In Tasks |
 | FND-15 | P1: Unit tests run without OBS | Tasks | Done (T3) |
-| FND-16 | P1: Unit tests run without OBS | Tasks | In Tasks |
-| FND-17 | P1: Unit tests run without OBS | Tasks | In Tasks |
+| FND-16 | P1: Unit tests run without OBS | Tasks | Done (T5) |
+| FND-17 | P1: Unit tests run without OBS | Tasks | Done (T5) |
 | FND-18 | P1: Unit tests run without OBS | Tasks | Done (T3) |
 | FND-19 | P1: Empty dock loads | Tasks | In Tasks |
 | FND-20 | P1: Empty dock loads | Tasks | In Tasks |
