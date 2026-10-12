@@ -471,7 +471,7 @@ T14 → T16
 - [x] The module links `camera-sync-core`.
 - [x] `obs_module_load` logs, once, `[camera-sync] load version=<PLUGIN_VERSION> obs_built=<format_version(LIBOBS_API_VER)> obs_running=<obs_get_version_string()> quirc=<7-character quirc commit>`. The quirc commit comes from a compile definition read from the submodule at configure time.
 - [x] The template's "plugin loaded successfully" line is gone.
-- [x] Quick gate passes, then CI gate passes. CI: green on all four jobs with three packages, first on scratch branch run 38266405214, then on main.
+- [x] Quick gate passes, then CI gate passes. CI: green on all four jobs with three packages, first on scratch branch run 38266405214, then on main run 38267420611 (Check Formatting needed a gersemi fix in 4518ce4).
 
 **Tests**: none
 **Gate**: quick, then ci
@@ -495,11 +495,13 @@ T14 → T16
 
 **Done when**:
 
-- [ ] `ENABLE_FRONTEND_API` and `ENABLE_QT` are on for every platform preset.
-- [ ] The dock registers under id `camera-sync-dock` with the title `obs_module_text("CameraSync.Dock.Title")`, and `en-US.ini` holds `CameraSync.Dock.Title="Camera Sync"`.
-- [ ] The dock shows one `QLabel` reading "Camera Sync 0.1.0" and no other widget.
-- [ ] Every new file starts with the SPDX line, and the quick gate's notice check passes.
-- [ ] CI gate passes on all three platforms.
+- [x] `ENABLE_FRONTEND_API` and `ENABLE_QT` are on for every platform preset.
+- [x] The dock registers under id `camera-sync-dock` with the title `obs_module_text("CameraSync.Dock.Title")`, and `en-US.ini` holds `CameraSync.Dock.Title="Camera Sync"`.
+- [x] The dock shows one `QLabel` reading "Camera Sync 0.1.0" and no other widget.
+- [x] Every new file starts with the SPDX line, and the quick gate's notice check passes.
+- [x] CI gate passes on all three platforms. CI: green on all four jobs with three packages, first on scratch branch run 38267470509, then on main.
+
+**Notes**: The Qt block in `CMakeLists.txt` now says `find_package(Qt6 REQUIRED ...)`, so a missing Qt stops the configure step instead of failing at link time.
 
 **Tests**: none
 **Gate**: quick, then ci

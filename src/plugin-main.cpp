@@ -20,6 +20,7 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #include <obs-module.h>
 #include <plugin-support.h>
 
+#include "camera-sync-dock.hpp"
 #include "load-line.hpp"
 
 OBS_DECLARE_MODULE()
@@ -30,6 +31,8 @@ bool obs_module_load(void)
 	const std::string line = camera_sync::load_line(PLUGIN_VERSION, LIBOBS_API_VER, obs_get_version_string(),
 							CAMERA_SYNC_QUIRC_COMMIT);
 	obs_log(LOG_INFO, "%s", line.c_str());
+
+	camera_sync_register_dock();
 	return true;
 }
 

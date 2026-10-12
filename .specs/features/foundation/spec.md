@@ -185,16 +185,16 @@ Implicit-requirement sweep, Medium scope: external-dependency failure is covered
 | FND-11 | P1: Builds and packages in CI | Tasks | Done (T6) |
 | FND-12 | P1: Builds and packages in CI | Tasks | Done (T4) |
 | FND-13 | P1: Unit tests run without OBS | Tasks | Done (T3) |
-| FND-14 | P1: Unit tests run without OBS | Tasks | In Tasks |
+| FND-14 | P1: Unit tests run without OBS | Tasks | Done (T13) |
 | FND-15 | P1: Unit tests run without OBS | Tasks | Done (T3) |
 | FND-16 | P1: Unit tests run without OBS | Tasks | Done (T5) |
 | FND-17 | P1: Unit tests run without OBS | Tasks | Done (T5) |
 | FND-18 | P1: Unit tests run without OBS | Tasks | Done (T3) |
 | FND-19 | P1: Empty dock loads | Tasks | In Tasks |
 | FND-20 | P1: Empty dock loads | Tasks | In Tasks |
-| FND-21 | P1: Empty dock loads | Tasks | Partial (T3 done, T13 and T16 pending) |
-| FND-22 | P1: Empty dock loads | Tasks | In Tasks |
-| FND-23 | P1: Empty dock loads | Tasks | In Tasks |
+| FND-21 | P1: Empty dock loads | Tasks | Partial (T3, T13 done, T16 pending) |
+| FND-22 | P1: Empty dock loads | Tasks | Partial (T14 done, T16 pending) |
+| FND-23 | P1: Empty dock loads | Tasks | Partial (T14 done, T16 pending) |
 | FND-24 | P1: Empty dock loads | Tasks | In Tasks |
 | FND-25 | P1: Detector and quirc in the core | Tasks | Done (T10) |
 | FND-26 | P1: Detector and quirc in the core | Tasks | Done (T11, T12) |
