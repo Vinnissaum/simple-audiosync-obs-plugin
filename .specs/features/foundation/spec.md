@@ -174,12 +174,12 @@ Implicit-requirement sweep, Medium scope: external-dependency failure is covered
 | -------------- | ----- | ----- | ------ |
 | FND-01 | P1: Builds and packages in CI | Tasks | Done (T1) |
 | FND-02 | P1: Builds and packages in CI | Tasks | Done (T1) |
-| FND-03 | P1: Builds and packages in CI | Tasks | In Tasks |
+| FND-03 | P1: Builds and packages in CI | Tasks | Partial (T7 done, T8 pending) |
 | FND-04 | P1: Builds and packages in CI | Tasks | In Tasks |
-| FND-05 | P1: Builds and packages in CI | Tasks | In Tasks |
-| FND-06 | P1: Builds and packages in CI | Tasks | In Tasks |
-| FND-07 | P1: Builds and packages in CI | Tasks | In Tasks |
-| FND-08 | P1: Builds and packages in CI | Tasks | In Tasks |
+| FND-05 | P1: Builds and packages in CI | Tasks | Done (T7) |
+| FND-06 | P1: Builds and packages in CI | Tasks | Done (T7) |
+| FND-07 | P1: Builds and packages in CI | Tasks | Partial (T7 done, T8 pending) |
+| FND-08 | P1: Builds and packages in CI | Tasks | Partial (T7 done, T8 pending) |
 | FND-09 | P1: Builds and packages in CI | Tasks | Done (T2) |
 | FND-10 | P1: Builds and packages in CI | Tasks | In Tasks |
 | FND-11 | P1: Builds and packages in CI | Tasks | Done (T6) |

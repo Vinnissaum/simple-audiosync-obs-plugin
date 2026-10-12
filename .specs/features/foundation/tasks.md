@@ -290,12 +290,12 @@ T14 → T16
 
 **Done when**:
 
-- [ ] `obs-studio` is `30.0.2`, with SHA-256 hashes of the tag's source archive computed for `macos` and `windows-x64`.
-- [ ] `prebuilt` and `qt6` are `2023-11-03`, with hashes copied from OBS 30.0.2's `buildspec.json` (its `macos-universal` hash under the template's `macos` key), including Qt's Windows debug symbols.
-- [ ] The OBS configure step uses 30.0.2's option names (`ENABLE_UI` in place of `ENABLE_FRONTEND`) and still builds and installs only libobs and `obs-frontend-api`.
-- [ ] The `macos` preset sets `CMAKE_OSX_DEPLOYMENT_TARGET` to `11.0`.
-- [ ] Verified once on a scratch branch that is never merged: one altered hash fails the configure step before any compiling (FND-08).
-- [ ] CI gate passes for Windows and macOS.
+- [x] `obs-studio` is `30.0.2`, with SHA-256 hashes of the tag's source archive computed for `macos` and `windows-x64`.
+- [x] `prebuilt` and `qt6` are `2023-11-03`, with hashes copied from OBS 30.0.2's `buildspec.json` (its `macos-universal` hash under the template's `macos` key), including Qt's Windows debug symbols.
+- [x] The OBS configure step uses 30.0.2's option names (`ENABLE_UI` in place of `ENABLE_FRONTEND`) and still builds and installs only libobs and `obs-frontend-api`.
+- [x] The `macos` preset sets `CMAKE_OSX_DEPLOYMENT_TARGET` to `11.0`.
+- [x] Verified once on a scratch branch that is never merged: one altered hash fails the configure step before any compiling (FND-08).
+- [x] CI gate passes for Windows and macOS.
 
 **Tests**: none
 **Gate**: ci

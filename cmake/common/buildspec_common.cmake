@@ -52,14 +52,37 @@ function(_setup_obs_studio)
     set(_is_fresh --fresh)
   endif()
 
+  # OBS 30.0.2 builds libobs without the UI on macOS, but on Windows only the UI project defines the OBS::w32-pthreads
+  # target that libobs links, so Windows configures the UI too. Neither build compiles it: only libobs and
+  # obs-frontend-api are built and installed.
+  set(_enable_ui OFF)
+
   if(OS_WINDOWS)
+    set(_enable_ui ON)
     set(_cmake_generator "${CMAKE_GENERATOR}")
-    set(_cmake_arch "-A ${arch},version=${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}")
-    set(_cmake_extra "-DCMAKE_SYSTEM_VERSION=${CMAKE_SYSTEM_VERSION} -DCMAKE_ENABLE_SCRIPTING=OFF")
+    # OBS 30.0.2 takes the architecture from CMAKE_GENERATOR_PLATFORM, so the platform carries no version suffix
+    set(_cmake_arch "-A ${arch}")
+    set(_cmake_extra "-DCMAKE_SYSTEM_VERSION=${CMAKE_SYSTEM_VERSION};-DCMAKE_COMPILE_WARNING_AS_ERROR=OFF")
+    list(APPEND _cmake_extra "-DENABLE_SCRIPTING:BOOL=OFF")
   elseif(OS_MACOS)
     set(_cmake_generator "Xcode")
     set(_cmake_arch "-DCMAKE_OSX_ARCHITECTURES:STRING='arm64;x86_64'")
-    set(_cmake_extra "-DCMAKE_OSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+    # OBS 30.0.2 reads the SDK version from the CMAKE_OSX_SYSROOT path, which the Xcode generator leaves empty
+    execute_process(
+      COMMAND xcrun --sdk macosx --show-sdk-platform-path
+      OUTPUT_VARIABLE _sdk_platform_path
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      COMMAND_ERROR_IS_FATAL ANY
+    )
+    execute_process(
+      COMMAND xcrun --sdk macosx --show-sdk-version
+      OUTPUT_VARIABLE _sdk_version
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      COMMAND_ERROR_IS_FATAL ANY
+    )
+    set(_sdk_path "${_sdk_platform_path}/Developer/SDKs/MacOSX${_sdk_version}.sdk")
+    set(_cmake_extra "-DCMAKE_OSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET};-DCMAKE_OSX_SYSROOT=${_sdk_path}")
+    list(APPEND _cmake_extra "-DCMAKE_COMPILE_WARNING_AS_ERROR=OFF")
   endif()
 
   message(STATUS "Configure ${label} (${arch})")
@@ -67,7 +90,7 @@ function(_setup_obs_studio)
     COMMAND
       "${CMAKE_COMMAND}" -S "${dependencies_dir}/${_obs_destination}" -B
       "${dependencies_dir}/${_obs_destination}/build_${arch}" -G ${_cmake_generator} "${_cmake_arch}"
-      -DOBS_CMAKE_VERSION:STRING=3.0.0 -DENABLE_PLUGINS:BOOL=OFF -DENABLE_FRONTEND:BOOL=OFF
+      -DOBS_CMAKE_VERSION:STRING=3.0.0 -DENABLE_PLUGINS:BOOL=OFF -DENABLE_UI:BOOL=${_enable_ui}
       -DOBS_VERSION_OVERRIDE:STRING=${_obs_version} "-DCMAKE_PREFIX_PATH='${CMAKE_PREFIX_PATH}'" ${_is_fresh}
       ${_cmake_extra}
     RESULT_VARIABLE _process_result
@@ -214,6 +237,8 @@ function(_check_dependencies)
       set(_obs_version ${version})
       set(_obs_destination "${destination}")
       list(APPEND CMAKE_PREFIX_PATH "${dependencies_dir}")
+      # OBS 30.0.2 installs its Windows package files in cmake/<package>, which find_package only searches below a prefix
+      list(APPEND CMAKE_PREFIX_PATH "${dependencies_dir}/cmake")
     endif()
 
     message(STATUS "Setting up ${label} (${arch}) - done")
