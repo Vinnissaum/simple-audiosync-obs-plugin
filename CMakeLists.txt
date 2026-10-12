@@ -1,4 +1,22 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 cmake_minimum_required(VERSION 3.28...3.30)
+
+# The core-only configuration builds the OBS-free core and its unit tests. It needs no OBS, obs-deps or Qt, so it skips
+# the bootstrap, which sets up the OBS dependencies.
+option(CAMERA_SYNC_CORE_ONLY "Build only the OBS-free core and its unit tests" OFF)
+
+if(CAMERA_SYNC_CORE_ONLY)
+  file(READ "${CMAKE_CURRENT_SOURCE_DIR}/buildspec.json" buildspec)
+  string(JSON _name GET ${buildspec} name)
+  string(JSON _version GET ${buildspec} version)
+
+  project(${_name} VERSION ${_version} LANGUAGES C CXX)
+
+  enable_testing()
+  add_subdirectory(core)
+  add_subdirectory(tests)
+  return()
+endif()
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/common/bootstrap.cmake" NO_POLICY_SCOPE)
 

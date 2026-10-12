@@ -176,14 +176,14 @@ T14 → T16
 
 **Done when**:
 
-- [ ] `cmake --preset core` takes project name and version from `buildspec.json` and never includes `cmake/common/bootstrap.cmake`.
-- [ ] `camera-sync-core` includes no libobs, OBS frontend or Qt header and links none of their libraries.
-- [ ] doctest is a single pinned header, its version and MIT notice at the top of the file.
-- [ ] `camera_sync::format_version(uint32_t packed)` turns a libobs packed version into `"30.0.2"`, and `camera_sync::load_line(...)` returns exactly `load version=0.1.0 obs_built=30.0.2 obs_running=32.0.1 quirc=542848d` for those inputs. The `[camera-sync] ` prefix is `obs_log`'s and stays out of the core.
-- [ ] Tests cover each field, a zero patch, and a two-digit minor.
-- [ ] `ctest --preset core -R load_line` runs only the `load_line` test cases (FND-18).
-- [ ] The quick gate passes under `unshare -rn` (no network) from a fresh clone (FND-15).
-- [ ] Test count: at least 4 test cases pass.
+- [x] `cmake --preset core` takes project name and version from `buildspec.json` and never includes `cmake/common/bootstrap.cmake`.
+- [x] `camera-sync-core` includes no libobs, OBS frontend or Qt header and links none of their libraries.
+- [x] doctest is a single pinned header, its version and MIT notice at the top of the file.
+- [x] `camera_sync::format_version(uint32_t packed)` turns a libobs packed version into `"30.0.2"`, and `camera_sync::load_line(...)` returns exactly `load version=0.1.0 obs_built=30.0.2 obs_running=32.0.1 quirc=542848d` for those inputs. The `[camera-sync] ` prefix is `obs_log`'s and stays out of the core.
+- [x] Tests cover each field, a zero patch, and a two-digit minor.
+- [x] `ctest --preset core -R load_line` runs only the `load_line` test cases (FND-18).
+- [x] The quick gate passes under `unshare -rn` (no network) from a fresh clone (FND-15).
+- [x] Test count: at least 4 test cases pass.
 
 **Tests**: unit
 **Gate**: quick
