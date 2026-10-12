@@ -30,7 +30,7 @@ Not yet done: the Reading spikes, and the load check of the dock in OBS 30.0.0 a
 - OBS Studio 30.0.2 headers (libobs and the frontend API) on every platform, so the plugin loads in OBS 30.0.0 and up. The build refuses libobs headers other than 30.0.x.
 - Windows and macOS take obs-deps and Qt 6 from OBS's prebuilt archives dated 2023-11-03, which OBS 30.0.2 pins. Ubuntu builds libobs and the frontend API from the OBS 30.0.2 source archive and takes Qt 6 from Ubuntu 24.04's packages. `buildspec.json` pins every download with a SHA-256 hash.
 - Compilers: Visual Studio 2022 on Windows (x64, Windows SDK 10.0.20348 or later), Xcode 16 or later on macOS (universal arm64 and x86_64, deployment target macOS 11.0), the Ubuntu 24.04 GCC (13) on Ubuntu. The core-only build needs any C and C++17 compiler.
-- CMake 3.28 or later. Ninja for the `core` and Ubuntu presets. `cmake` and `ninja` must be on `PATH`; on the WSL machine they live in `~/.local/bin`, so run `export PATH=$HOME/.local/bin:$PATH` first.
+- CMake 3.28 or later. The `core` preset uses CMake's default generator, so it needs a compiler, CMake and `make`, nothing else. The Ubuntu presets use Ninja. `cmake` (and `ninja` for Ubuntu) must be on `PATH`; on the WSL machine they live in `~/.local/bin`, so run `export PATH=$HOME/.local/bin:$PATH` first.
 - Presets (`CMakePresets.json`; each configure preset has a build preset of the same name): `core`, `macos`, `macos-ci`, `windows-x64`, `windows-ci-x64`, `ubuntu-x86_64`, `ubuntu-ci-x86_64`. `core` also has a test preset.
 - Formatting: CI's Check Formatting runs clang-format (`.clang-format`) on `src/`, `core/` and `tests/`, and gersemi 0.21.0 (`.gersemirc`) on the CMake files. `third_party/` and `deps/` are skipped. Neither tool is installed on the WSL machine.
 
@@ -42,7 +42,7 @@ Clone with the submodule, or run `git submodule update --init` in an existing cl
 git clone --recurse-submodules https://github.com/Vinnissaum/simple-audiosync-obs-plugin.git
 ```
 
-Core only, on any machine with a compiler, CMake and Ninja, with no network access after the clone (this is the quick gate):
+Core only, on any machine with a compiler, CMake and `make`, with no network access after the clone (this is the quick gate):
 
 ```
 cmake --preset core && cmake --build --preset core && ctest --preset core --output-on-failure

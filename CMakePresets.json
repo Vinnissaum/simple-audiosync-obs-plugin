@@ -19,7 +19,6 @@
       "displayName": "Core only",
       "description": "Build and test only the OBS-free core, with no OBS, obs-deps or Qt to fetch",
       "binaryDir": "${sourceDir}/build_core",
-      "generator": "Ninja",
       "cacheVariables": {
         "CAMERA_SYNC_CORE_ONLY": true,
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
