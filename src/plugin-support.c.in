@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
-Plugin Name
-Copyright (C) <Year> <Developer> <Email Address>
+Camera Sync
+Copyright (C) 2026 Vinicius Braz
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

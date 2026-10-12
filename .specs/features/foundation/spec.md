@@ -183,7 +183,7 @@ Implicit-requirement sweep, Medium scope: external-dependency failure is covered
 | FND-09 | P1: Builds and packages in CI | Tasks | Done (T2) |
 | FND-10 | P1: Builds and packages in CI | Tasks | In Tasks |
 | FND-11 | P1: Builds and packages in CI | Tasks | In Tasks |
-| FND-12 | P1: Builds and packages in CI | Tasks | Partial (T1 done, T4 pending) |
+| FND-12 | P1: Builds and packages in CI | Tasks | Done (T4) |
 | FND-13 | P1: Unit tests run without OBS | Tasks | Done (T3) |
 | FND-14 | P1: Unit tests run without OBS | Tasks | In Tasks |
 | FND-15 | P1: Unit tests run without OBS | Tasks | Done (T3) |

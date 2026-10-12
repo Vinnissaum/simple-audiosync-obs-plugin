@@ -207,11 +207,11 @@ T14 → T16
 
 **Done when**:
 
-- [ ] Checked: `src/`, `core/`, `tests/`, `cmake/camera-sync/` and the top-level `CMakeLists.txt`. Skipped: the template's own `cmake/common`, `cmake/linux`, `cmake/macos`, `cmake/windows`, plus `third_party/`, `deps/`, `tests/fixtures/` and `core/detector/` (T11 adds that rule).
-- [ ] A CTest case runs the check against a fixture tree with one unmarked file and passes only when the output names that file.
-- [ ] A CTest case runs the check on the repository and passes.
-- [ ] Every file T3 added starts with the SPDX line.
-- [ ] Quick gate passes. Test count: T3's cases plus 2.
+- [x] Checked: `src/`, `core/`, `tests/`, `cmake/camera-sync/` and the top-level `CMakeLists.txt`. Skipped: the template's own `cmake/common`, `cmake/linux`, `cmake/macos`, `cmake/windows`, plus `third_party/`, `deps/`, `tests/fixtures/` and `core/detector/` (T11 adds that rule).
+- [x] A CTest case runs the check against a fixture tree with one unmarked file and passes only when the output names that file.
+- [x] A CTest case runs the check on the repository and passes.
+- [x] Every file T3 added starts with the SPDX line.
+- [x] Quick gate passes. Test count: T3's cases plus 2.
 
 **Tests**: unit
 **Gate**: quick
