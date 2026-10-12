@@ -468,10 +468,10 @@ T14 → T16
 
 **Done when**:
 
-- [ ] The module links `camera-sync-core`.
-- [ ] `obs_module_load` logs, once, `[camera-sync] load version=<PLUGIN_VERSION> obs_built=<format_version(LIBOBS_API_VER)> obs_running=<obs_get_version_string()> quirc=<7-character quirc commit>`. The quirc commit comes from a compile definition read from the submodule at configure time.
-- [ ] The template's "plugin loaded successfully" line is gone.
-- [ ] Quick gate passes, then CI gate passes.
+- [x] The module links `camera-sync-core`.
+- [x] `obs_module_load` logs, once, `[camera-sync] load version=<PLUGIN_VERSION> obs_built=<format_version(LIBOBS_API_VER)> obs_running=<obs_get_version_string()> quirc=<7-character quirc commit>`. The quirc commit comes from a compile definition read from the submodule at configure time.
+- [x] The template's "plugin loaded successfully" line is gone.
+- [x] Quick gate passes, then CI gate passes. CI: green on all four jobs with three packages, first on scratch branch run 38266405214, then on main.
 
 **Tests**: none
 **Gate**: quick, then ci

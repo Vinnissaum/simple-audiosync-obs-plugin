@@ -41,7 +41,21 @@ find_package(libobs REQUIRED)
 include(cmake/camera-sync/check-libobs-version.cmake)
 camera_sync_check_libobs_version("${libobs_VERSION}")
 
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::libobs)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::libobs camera-sync-core)
+
+# The load line names the quirc commit, because quirc_version() says "1.0" at every revision. It is the first 7
+# characters of the commit the submodule is checked out at.
+execute_process(
+  COMMAND git -C ${CMAKE_CURRENT_SOURCE_DIR}/deps/quirc rev-parse HEAD
+  OUTPUT_VARIABLE quirc_commit
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  RESULT_VARIABLE quirc_commit_result
+)
+if(NOT quirc_commit_result EQUAL 0 OR NOT quirc_commit MATCHES "^[0-9a-f]+$")
+  message(FATAL_ERROR "Cannot read the quirc commit from deps/quirc with git")
+endif()
+string(SUBSTRING "${quirc_commit}" 0 7 quirc_commit)
+target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE CAMERA_SYNC_QUIRC_COMMIT="${quirc_commit}")
 
 if(ENABLE_FRONTEND_API)
   find_package(obs-frontend-api REQUIRED)
@@ -61,6 +75,6 @@ if(ENABLE_QT)
   )
 endif()
 
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE src/plugin-main.c)
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE src/plugin-main.cpp)
 
 set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})
