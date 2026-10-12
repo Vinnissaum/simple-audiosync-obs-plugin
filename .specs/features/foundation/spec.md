@@ -197,9 +197,9 @@ Implicit-requirement sweep, Medium scope: external-dependency failure is covered
 | FND-23 | P1: Empty dock loads | Tasks | In Tasks |
 | FND-24 | P1: Empty dock loads | Tasks | In Tasks |
 | FND-25 | P1: Detector and quirc in the core | Tasks | Done (T10) |
-| FND-26 | P1: Detector and quirc in the core | Tasks | Partial (T11 done, T12 pending) |
-| FND-27 | P1: Detector and quirc in the core | Tasks | Partial (T11 done, T12 pending) |
-| FND-28 | P1: Detector and quirc in the core | Tasks | Partial (T11 done, T12 pending) |
+| FND-26 | P1: Detector and quirc in the core | Tasks | Done (T11, T12) |
+| FND-27 | P1: Detector and quirc in the core | Tasks | Done (T11, T12) |
+| FND-28 | P1: Detector and quirc in the core | Tasks | Done (T11, T12) |
 | FND-29 | P1: Detector and quirc in the core | Tasks | Done (T11) |
 | FND-30 | P1: Detector and quirc in the core | Tasks | Done (T10) |
 | FND-31 | P2: Build documented | Tasks | In Tasks |

@@ -436,11 +436,13 @@ T14 → T16
 
 **Done when**:
 
-- [ ] Notices and provenance as in T11, enforced by the same check.
-- [ ] `generate.sh` also writes a 2-second mono 48 kHz 16-bit PCM clip of the same pattern's sound, and the fixture records which indices it carries.
-- [ ] A doctest case decodes the clip with `f=884`, `c=2` and gets exactly those indices, in order.
-- [ ] A doctest case decodes 2 seconds of silence and gets no marker.
-- [ ] Quick gate passes. Test count: previous cases plus at least 2.
+- [x] Notices and provenance as in T11, enforced by the same check.
+- [x] `generate.sh` also writes a 2-second mono 48 kHz 16-bit PCM clip of the same pattern's sound, and the fixture records which indices it carries. The script already wrote both files in T11's commit; this commit adds the clip and `audio-indices.txt` (indices 0 to 9).
+- [x] A doctest case decodes the clip with `f=884`, `c=2` and gets exactly those indices, in order.
+- [x] A doctest case decodes 2 seconds of silence and gets no marker.
+- [x] Quick gate passes. Test count: previous cases plus at least 2. Ran 24, which is 22 plus 2.
+
+**Notes**: The audio detector takes its pattern (`f`, `c`, `q_ms`) through `set_pattern`, which holds Sync Dock's mutex hand-off; Reading wires the first camera's QR payload to it. Sync Dock's audio `index_max` lookup in the video pairing list is not vendored, so an audio marker carries its timestamp, index and score.
 
 **Tests**: unit
 **Gate**: quick

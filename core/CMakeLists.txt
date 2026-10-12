@@ -25,7 +25,7 @@ endif()
 
 add_library(camera-sync-core STATIC)
 
-target_sources(camera-sync-core PRIVATE load-line.cpp detector/video-detector.cpp)
+target_sources(camera-sync-core PRIVATE load-line.cpp detector/video-detector.cpp detector/audio-detector.cpp)
 
 target_include_directories(camera-sync-core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
