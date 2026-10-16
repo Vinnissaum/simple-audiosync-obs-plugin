@@ -338,11 +338,11 @@ T35 → T37
 
 **Done when**:
 
-- [ ] `generate.py` writes, for cycles 0 to 3 at q=4, f=884, c=2, 60 fps, 320×180, every distinct frame once as a PGM (deduplicated by content) and one text file listing the frame sequence by name. The added files are under 1 MB in total. `generate.sh` and the script's header describe them.
-- [ ] `tests/support/pattern-timeline.hpp` rebuilds the timestamped frame sequence from those files at 60 fps with a start offset argument.
-- [ ] Feeding the 4 cycles through a `CameraPipeline` gives 4 video markers with indices 0, 1, 2, 3 in order, and consecutive marker times 200 ms ± 1 ms apart (READ-20: the generated cycle is 3q frames).
-- [ ] Added doctest cases: 2, in `tests/detector/video-cycles.cpp`. Quick gate passes.
-- [ ] **If the generator cannot run on this machine** (no network, Pillow or qrcode), stop at this task, record why in `tasks.md`, and continue with phases 4 to 8 while T9 to T11 wait.
+- [x] `generate.py` writes, for cycles 0 to 3 at q=4, f=884, c=2, 60 fps, 320×180, every distinct frame once as a PGM (deduplicated by content) and one text file listing the frame sequence by name. The added files are under 1 MB in total. `generate.sh` and the script's header describe them. Six distinct frames (`video-cycles/frame-00.pgm` to `frame-05.pgm`) and `sequence.txt` with 48 names: 346,314 bytes. The frames carry the shipped pattern's wrap `I=256`.
+- [x] `tests/support/pattern-timeline.hpp` rebuilds the timestamped frame sequence from those files at 60 fps with a start offset argument. It also plays the sequence into a `FrameSink`.
+- [x] Feeding the 4 cycles through a `CameraPipeline` gives 4 video markers with indices 0, 1, 2, 3 in order, and consecutive marker times 200 ms ± 1 ms apart (READ-20: the generated cycle is 3q frames). Each marker is also within 1 ms of its generated time, the start of frame 2q of its cycle (measured: 0 ms off).
+- [x] Added doctest cases: 2, in `tests/detector/video-cycles.cpp`. Quick gate passes. Test count: ran 71, which is 69 plus 2.
+- [x] **If the generator cannot run on this machine** (no network, Pillow or qrcode), stop at this task, record why in `tasks.md`, and continue with phases 4 to 8 while T9 to T11 wait. It ran on 2026-10-16: the network was up, and Pillow 12.3.0 and qrcode 8.2 came from PyPI wheels in a scratch virtualenv outside the repository. With them the three existing fixtures regenerate byte for byte.
 
 **Tests**: unit
 **Gate**: quick

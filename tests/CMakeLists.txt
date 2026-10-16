@@ -11,6 +11,7 @@ target_sources(
     detector/quirc.cpp
     detector/video-detector.cpp
     detector/audio-detector.cpp
+    detector/video-cycles.cpp
     reading/pattern.cpp
     reading/estimator.cpp
     reading/camera-pipeline.cpp
