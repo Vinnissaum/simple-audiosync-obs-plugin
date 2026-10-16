@@ -78,7 +78,9 @@ public:
 	// mic it changes nothing. A camera whose tap cannot be made is skipped with a warning; a mic whose tap cannot be
 	// made measures nothing.
 	StartResult start(FrameRate rate);
+	// Releases every tap and keeps every reading and the pattern, for a later Start.
 	void stop();
+	// Clears every reading, sample, marker and the pattern, while measuring or stopped.
 	void reset();
 	// The scene collection is about to change: every tap, reading and the selection go, and the session is Idle.
 	void collection_changing();

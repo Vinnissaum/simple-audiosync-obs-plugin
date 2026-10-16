@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include <doctest/doctest.h>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstdint>
@@ -15,7 +16,9 @@
 #include <vector>
 
 #include "reading/session.hpp"
+#include "support/fixtures.hpp"
 
+using camera_sync::AudioBlock;
 using camera_sync::AudioMarker;
 using camera_sync::AudioSink;
 using camera_sync::CameraRow;
@@ -25,6 +28,7 @@ using camera_sync::FrameRate;
 using camera_sync::FrameSink;
 using camera_sync::Logger;
 using camera_sync::LogLevel;
+using camera_sync::MicPipeline;
 using camera_sync::PatternParams;
 using camera_sync::Session;
 using camera_sync::SessionSnapshot;
@@ -216,6 +220,32 @@ struct Harness {
 		return AudioMarker{time_ns, static_cast<int>(index), 0.0f};
 	}
 };
+
+constexpr uint32_t sample_rate = 48000;
+constexpr uint32_t block_frames = 480; // 10 ms
+
+// Plays the audio fixture, the sound of the pattern above, into a mic's sink in 10 ms blocks from start_ns.
+void hear_clip(AudioSink &sink, uint64_t start_ns)
+{
+	const std::vector<float> clip = read_audio_clip();
+	for (size_t first = 0; first < clip.size(); first += block_frames) {
+		const uint32_t frames = static_cast<uint32_t>(std::min<size_t>(block_frames, clip.size() - first));
+		sink.on_audio(AudioBlock{{clip.data() + first, nullptr},
+					 frames,
+					 start_ns + camera_sync::mul_div64(first, 1000000000ULL, sample_rate)});
+	}
+}
+
+// The audio markers the fixture yields when played from start_ns, heard by a mic pipeline of the test's own.
+std::vector<AudioMarker> clip_markers(uint64_t start_ns)
+{
+	std::vector<AudioMarker> markers;
+	MicPipeline mic(nullptr, sample_rate, [&](const AudioMarker &marker) { markers.push_back(marker); });
+	mic.set_pattern(pattern.f, pattern.c, pattern.q_ms);
+	hear_clip(mic, start_ns);
+	REQUIRE(markers.size() == 10);
+	return markers;
+}
 
 } // namespace
 
@@ -445,4 +475,232 @@ TEST_CASE("session destroys taps only after releasing its lock")
 
 	CHECK(h.factory.probes == 3);
 	CHECK(h.factory.live.empty());
+}
+
+TEST_CASE("session adopts the first marker's pattern for the mic and the estimator")
+{
+	Harness h;
+	h.session.set_selection({"cam-a", "cam-b"}, "mic");
+	REQUIRE(h.session.start({60, 1}) == StartResult::Started);
+	REQUIRE(h.factory.audio_sink);
+	const uint64_t start_ns = 10 * one_s;
+	const std::vector<AudioMarker> heard = clip_markers(start_ns);
+
+	// Cam A brings the pattern. A later marker of another pattern, on cam B, does not replace it.
+	h.session.on_video_marker("cam-a", Harness::video(heard[0].index, heard[0].timestamp + 100 * one_ms));
+	h.session.on_video_marker("cam-b", Harness::video(heard[1].index, heard[1].timestamp + 40 * one_ms,
+							  PatternParams{1000, 2, 66, 256}));
+	hear_clip(*h.factory.audio_sink, start_ns);
+
+	// READ-17: the mic listened for that pattern's sound (f 884, c 2, q 66), so cam A's marker paired at +100 ms.
+	CHECK(h.row("cam-a").state == CameraState::Settling);
+	CHECK(h.row("cam-a").samples == 1);
+	CHECK(h.row("cam-a").live_ms == 100);
+	CHECK(h.row("cam-b").state == CameraState::Looking);
+}
+
+TEST_CASE("session gives the estimator the wrap of the adopted pattern")
+{
+	// A wrap of 16 indexes at q = 66 ms: half a wrap is 16 x 3 x 66 / 2 = 1,584 ms.
+	const PatternParams short_wrap{884, 2, 66, 16};
+	Harness h;
+	h.session.set_selection({"cam-a", "cam-b"}, "mic");
+	REQUIRE(h.session.start({60, 1}) == StartResult::Started);
+
+	// READ-17: indexes 14 then 1 skip 15 and 0 when they wrap at 16.
+	h.session.on_video_marker("cam-a", Harness::video(14, one_s, short_wrap));
+	h.session.on_video_marker("cam-a", Harness::video(1, one_s + 600 * one_ms, short_wrap));
+	CHECK(h.row("cam-a").missed == 2);
+
+	// Markers half a wrap apart do not pair; one millisecond less does.
+	h.sample("cam-b", 5, 10 * one_s, 1584 * one_ms, short_wrap);
+	CHECK(h.row("cam-b").state == CameraState::Looking);
+	h.sample("cam-b", 6, 20 * one_s, 1583 * one_ms, short_wrap);
+	CHECK(h.row("cam-b").state == CameraState::Settling);
+	CHECK(h.row("cam-b").live_ms == 1583);
+}
+
+TEST_CASE("session ignores the markers of a pattern other than its own")
+{
+	PatternParams other = pattern;
+	SUBCASE("another f")
+	{
+		other.f = 1000;
+	}
+	SUBCASE("another c")
+	{
+		other.c = 3;
+	}
+	SUBCASE("another q")
+	{
+		other.q_ms = 67;
+	}
+	SUBCASE("another index_max")
+	{
+		other.index_max = 128;
+	}
+
+	Harness h;
+	h.session.set_selection({"cam-a", "cam-b"}, "mic");
+	REQUIRE(h.session.start({30, 1}) == StartResult::Started);
+	h.sample("cam-a", 0, one_s, 100 * one_ms);
+
+	// READ-18: the other pattern's marker forms no sample and is not counted.
+	h.sample("cam-b", 1, 2 * one_s, 40 * one_ms, other);
+	CHECK(h.row("cam-b").state == CameraState::Looking);
+	CHECK(h.row("cam-b").samples_formed == 0);
+	CHECK(h.row("cam-b").received == 0);
+
+	// The same camera's marker of the session's pattern is read.
+	h.sample("cam-b", 2, 3 * one_s, 40 * one_ms);
+	CHECK(h.row("cam-b").state == CameraState::Settling);
+	CHECK(h.row("cam-b").live_ms == 40);
+}
+
+TEST_CASE("session stop keeps every reading and releases every tap")
+{
+	Harness h;
+	h.session.set_selection({"cam-a", "cam-b"}, "mic");
+	REQUIRE(h.session.start({30, 1}) == StartResult::Started);
+	for (uint32_t i = 0; i < 5; i++)
+		h.sample("cam-a", 20 + i, one_s + i * 200 * one_ms, 100 * one_ms);
+	h.sample("cam-b", 20, one_s, 40 * one_ms);
+	h.sample("cam-b", 21, one_s + 200 * one_ms, 45 * one_ms);
+	REQUIRE(h.row("cam-a").state == CameraState::Stable);
+
+	// READ-25
+	h.session.stop();
+	CHECK(h.snap().state == SessionState::Stopped);
+	CHECK(h.factory.live.empty());
+	CHECK(h.row("cam-a").state == CameraState::Stable);
+	CHECK(h.row("cam-a").reading_ms == 100);
+	CHECK(h.row("cam-a").samples == 5);
+	CHECK(h.row("cam-b").state == CameraState::Settling);
+	CHECK(h.row("cam-b").live_ms == 45);
+	CHECK(h.row("cam-b").samples == 2);
+}
+
+TEST_CASE("session start from stopped keeps every reading and listens for the kept pattern")
+{
+	Harness h;
+	h.session.set_selection({"cam-a", "cam-b"}, "mic");
+	REQUIRE(h.session.start({30, 1}) == StartResult::Started);
+	for (uint32_t i = 0; i < 5; i++)
+		h.sample("cam-a", 20 + i, one_s + i * 200 * one_ms, 100 * one_ms);
+	h.sample("cam-b", 20, one_s, 40 * one_ms);
+	h.sample("cam-b", 21, one_s + 200 * one_ms, 45 * one_ms);
+	h.session.stop();
+
+	// READ-26: the taps are asked for again, and every reading and state is as Stop left it.
+	CHECK(h.session.start({30, 1}) == StartResult::Started);
+	CHECK(h.snap().state == SessionState::Measuring);
+	CHECK(h.factory.requests.size() == 6);
+	CHECK(h.factory.live == std::multiset<std::string>{"mic:mic", "camera:cam-a", "camera:cam-b"});
+	CHECK(h.row("cam-a").state == CameraState::Stable);
+	CHECK(h.row("cam-a").reading_ms == 100);
+	CHECK(h.row("cam-a").samples == 5);
+	CHECK(h.row("cam-b").state == CameraState::Settling);
+	CHECK(h.row("cam-b").live_ms == 45);
+	CHECK(h.row("cam-b").samples == 2);
+
+	// READ-25: the pattern was kept. Another one is still ignored, and the new mic tap listens for the kept one.
+	h.sample("cam-b", 30, 5 * one_s, 10 * one_ms, PatternParams{1000, 2, 66, 256});
+	CHECK(h.row("cam-b").samples == 2);
+	REQUIRE(h.factory.audio_sink);
+	const uint64_t start_ns = 10 * one_s;
+	const std::vector<AudioMarker> heard = clip_markers(start_ns);
+	h.session.on_video_marker("cam-b", Harness::video(heard[0].index, heard[0].timestamp + 50 * one_ms));
+	hear_clip(*h.factory.audio_sink, start_ns);
+	CHECK(h.row("cam-b").samples == 3);
+	CHECK(h.row("cam-b").live_ms == 50);
+}
+
+TEST_CASE("session reset clears every reading and marker and reports each camera Looking")
+{
+	Harness h;
+	h.session.set_selection({"cam-a", "cam-b"}, "mic");
+	REQUIRE(h.session.start({30, 1}) == StartResult::Started);
+	for (uint32_t i = 0; i < 5; i++)
+		h.sample("cam-a", 20 + i, one_s + i * 200 * one_ms, 100 * one_ms);
+	h.sample("cam-b", 20, one_s, 40 * one_ms);
+	h.session.on_audio_marker(Harness::audio(30, 5 * one_s));
+	REQUIRE(h.row("cam-a").state == CameraState::Stable);
+
+	SessionState state = SessionState::Measuring;
+	size_t live = 3;
+	SUBCASE("while measuring") {}
+	SUBCASE("while stopped")
+	{
+		h.session.stop();
+		state = SessionState::Stopped;
+		live = 0;
+	}
+
+	// READ-27: every camera Looking with no sample. The session stays where it was.
+	h.session.reset();
+	CHECK(h.snap().state == state);
+	CHECK(h.factory.live.size() == live);
+	CHECK(h.row("cam-a").state == CameraState::Looking);
+	CHECK(h.row("cam-a").samples == 0);
+	CHECK(h.row("cam-b").state == CameraState::Looking);
+	CHECK(h.row("cam-b").samples == 0);
+
+	// The audio marker went too: index 30 finds nothing to pair with.
+	if (state == SessionState::Stopped)
+		REQUIRE(h.session.start({30, 1}) == StartResult::Started);
+	h.session.on_video_marker("cam-a", Harness::video(30, 5 * one_s + 100 * one_ms));
+	CHECK(h.row("cam-a").state == CameraState::Looking);
+	CHECK(h.row("cam-a").samples_formed == 0);
+}
+
+TEST_CASE("session follows another pattern after reset")
+{
+	Harness h;
+	h.session.set_selection({"cam-a"}, "mic");
+	REQUIRE(h.session.start({60, 1}) == StartResult::Started);
+	h.sample("cam-a", 0, one_s, 100 * one_ms, PatternParams{1000, 2, 66, 256});
+	REQUIRE(h.row("cam-a").state == CameraState::Settling);
+
+	h.session.reset();
+
+	// READ-19: until a camera reads a pattern again, the session takes no audio marker, so one the mic decoded
+	// under the cleared pattern cannot pair.
+	h.session.on_audio_marker(Harness::audio(50, 2 * one_s));
+	h.session.on_video_marker("cam-a", Harness::video(50, 2 * one_s + 100 * one_ms));
+	CHECK(h.row("cam-a").state == CameraState::Looking);
+
+	// READ-27: that marker's pattern, the fixture's, is the session's now, and the mic listens for its sound.
+	REQUIRE(h.factory.audio_sink);
+	const uint64_t start_ns = 10 * one_s;
+	const std::vector<AudioMarker> heard = clip_markers(start_ns);
+	h.session.on_video_marker("cam-a", Harness::video(heard[0].index, heard[0].timestamp + 100 * one_ms));
+	hear_clip(*h.factory.audio_sink, start_ns);
+	CHECK(h.row("cam-a").state == CameraState::Settling);
+	CHECK(h.row("cam-a").samples == 1);
+	CHECK(h.row("cam-a").live_ms == 100);
+}
+
+TEST_CASE("session keeps the pattern after the camera that brought it leaves, until reset")
+{
+	const PatternParams other{1000, 2, 66, 256};
+	Harness h;
+	h.session.set_selection({"cam-a", "cam-b"}, "mic");
+	REQUIRE(h.session.start({30, 1}) == StartResult::Started);
+	h.sample("cam-a", 0, one_s, 100 * one_ms);
+	h.session.set_selection({"cam-b"}, "mic");
+	REQUIRE_FALSE(h.has_row("cam-a"));
+
+	// Edge case: the other cameras keep measuring against the pattern cam A brought.
+	h.sample("cam-b", 1, 2 * one_s, 40 * one_ms, other);
+	CHECK(h.row("cam-b").state == CameraState::Looking);
+	h.sample("cam-b", 2, 3 * one_s, 40 * one_ms);
+	CHECK(h.row("cam-b").state == CameraState::Settling);
+	CHECK(h.row("cam-b").live_ms == 40);
+
+	// Reset forgets it.
+	h.session.reset();
+	h.sample("cam-b", 3, 4 * one_s, 60 * one_ms, other);
+	CHECK(h.row("cam-b").state == CameraState::Settling);
+	CHECK(h.row("cam-b").samples == 1);
+	CHECK(h.row("cam-b").live_ms == 60);
 }

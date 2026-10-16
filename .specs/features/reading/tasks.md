@@ -483,12 +483,12 @@ T35 → T37
 
 **Done when**:
 
-- [ ] `on_video_marker` on a fresh session adopts the marker's pattern: the mic pipeline receives `set_pattern(f, c, q_ms)` once and the estimator receives the params (READ-17).
-- [ ] A marker whose f, c, q or index_max differs (one test each) forms no sample (READ-18).
-- [ ] Stop keeps readings and the pattern and releases every tap; Start from Stopped requests taps again and every kept reading and state is unchanged (READ-25, READ-26).
-- [ ] Reset clears samples, markers and the pattern and reports each measured camera Looking; the next marker may then adopt a different pattern (READ-27).
-- [ ] The pattern survives the removal of the camera that supplied it (an edge case) until Reset.
-- [ ] Added doctest cases: at least 8. Quick gate passes.
+- [x] `on_video_marker` on a fresh session adopts the marker's pattern: the mic pipeline receives `set_pattern(f, c, q_ms)` once and the estimator receives the params (READ-17). Checked through the real `MicPipeline`: the audio fixture decodes and pairs once the first marker's pattern reaches the mic, and a later marker of another pattern does not replace it. The estimator's params are checked with `index_max` 16: indexes 14 then 1 miss 2, and markers half a wrap (1,584 ms) apart do not pair while 1,583 ms do.
+- [x] A marker whose f, c, q or index_max differs (one test each) forms no sample (READ-18). One section each; the ignored marker is not counted as received either.
+- [x] Stop keeps readings and the pattern and releases every tap; Start from Stopped requests taps again and every kept reading and state is unchanged (READ-25, READ-26). Start hands a kept pattern to the new mic pipeline, so the audio fixture decodes after Stop and Start.
+- [x] Reset clears samples, markers and the pattern and reports each measured camera Looking; the next marker may then adopt a different pattern (READ-27). Reset leaves the session Measuring or Stopped, as the TDD's session diagram has it. Until a camera reads a pattern again the session takes no audio marker: after Reset the mic may still decode the cleared pattern, and READ-19 allows no audio marker without one.
+- [x] The pattern survives the removal of the camera that supplied it (an edge case) until Reset. Tested by unticking that camera; the pattern belongs to the session, not to a camera.
+- [x] Added doctest cases: at least 8. Quick gate passes. Added 8. Test count: ran 107, which is 99 plus 8.
 
 **Tests**: unit
 **Gate**: quick

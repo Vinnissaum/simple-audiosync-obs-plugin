@@ -47,6 +47,9 @@ StartResult Session::start(FrameRate rate)
 	// The mic first: nothing is measured without it, and no camera's tap has been made yet to undo.
 	auto mic_pipeline = std::make_unique<MicPipeline>(
 		log_, factory_.mic_sample_rate(), [this](const AudioMarker &marker) { on_audio_marker(marker); });
+	// A pattern kept through Stop is listened for at once (READ-26).
+	if (pattern_)
+		mic_pipeline->set_pattern(pattern_->f, pattern_->c, pattern_->q_ms);
 	std::unique_ptr<Tap> mic_tap = factory_.create_mic_tap(*mic_, *mic_pipeline);
 	if (!mic_tap) {
 		mic_tap_failed_ = true;
@@ -81,6 +84,8 @@ void Session::reset()
 	std::lock_guard<std::mutex> lock(mutex_);
 	if (state_ == SessionState::Idle)
 		return;
+	estimator_.clear();
+	pattern_.reset();
 }
 
 void Session::collection_changing()
@@ -113,13 +118,16 @@ void Session::on_video_marker(const SourceId &camera, const VideoMarker &marker)
 	if (state_ != SessionState::Measuring)
 		return;
 
-	// The first marker's pattern is the one the session follows: the mic listens for its sound and the estimator
-	// pairs by its wrap.
+	// The first marker's pattern is the one the session follows until Reset: the mic listens for its sound and the
+	// estimator pairs by its wrap (READ-17). Another pattern's markers are ignored (READ-18).
+	const PatternParams params = PatternParams::from(marker.qr_data);
 	if (!pattern_) {
-		pattern_ = PatternParams::from(marker.qr_data);
-		estimator_.set_pattern(*pattern_);
+		pattern_ = params;
+		estimator_.set_pattern(params);
 		if (mic_pipeline_)
-			mic_pipeline_->set_pattern(pattern_->f, pattern_->c, pattern_->q_ms);
+			mic_pipeline_->set_pattern(params.f, params.c, params.q_ms);
+	} else if (!(params == *pattern_)) {
+		return;
 	}
 	estimator_.on_video_marker(camera, marker.qr_data.index, marker.timestamp);
 }
@@ -127,7 +135,9 @@ void Session::on_video_marker(const SourceId &camera, const VideoMarker &marker)
 void Session::on_audio_marker(const AudioMarker &marker)
 {
 	std::lock_guard<std::mutex> lock(mutex_);
-	if (state_ != SessionState::Measuring)
+	// With no pattern there is nothing to listen for: after Reset the mic may still decode the pattern it cleared
+	// until a camera reads one again (READ-19).
+	if (state_ != SessionState::Measuring || !pattern_)
 		return;
 	estimator_.on_audio_marker(static_cast<uint32_t>(marker.index), marker.timestamp);
 }
