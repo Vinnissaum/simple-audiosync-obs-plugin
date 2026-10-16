@@ -22,9 +22,21 @@ struct CameraRowView {
 	std::string status; // empty unless the camera is ticked and the session reports it
 };
 
+// One entry of the mic picker.
+struct MicView {
+	SourceId id;
+	std::string name;
+	bool chosen = false;
+};
+
 // Everything the dock shows, worked out from a session snapshot, the catalog and the selection.
 struct DockView {
 	std::vector<CameraRowView> cameras; // the async video sources other than the chosen mic, in name order
+	std::vector<MicView> mics;          // the sources with audio other than the ticked cameras, in name order
+	std::string message;                // the message line; empty when there is nothing to say
+	bool start_enabled = false;
+	bool reset_enabled = false;
+	std::string start_label; // "Stop" while measuring, "Start" otherwise
 };
 
 // A signed millisecond value as the dock writes it: "+142", "−60" with U+2212, "0".

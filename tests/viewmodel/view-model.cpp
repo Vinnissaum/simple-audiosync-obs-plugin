@@ -16,6 +16,7 @@ using camera_sync::Choice;
 using camera_sync::DockView;
 using camera_sync::format_signed_ms;
 using camera_sync::SessionSnapshot;
+using camera_sync::SessionState;
 using camera_sync::SourceInfo;
 
 namespace {
@@ -29,6 +30,11 @@ std::string en_us(const char *key)
 		{"CameraSync.Row.VideoLate", "{value} ms - video late"},
 		{"CameraSync.Row.VideoEarly", "{value} ms - video early"},
 		{"CameraSync.Row.InSync", "0 ms - in sync"},
+		{"CameraSync.Message.Pick", "Pick at least one camera and the mic"},
+		{"CameraSync.Message.NoSound", "No pattern sound from {mic} - bring the phone closer or unmute it"},
+		{"CameraSync.Message.MicTap", "Could not listen to {mic}"},
+		{"CameraSync.Button.Start", "Start"},
+		{"CameraSync.Button.Stop", "Stop"},
 	};
 	const auto found = text.find(key);
 	return found == text.end() ? std::string(key) : found->second;
@@ -139,4 +145,126 @@ TEST_CASE("rows come in name order and the chosen mic is not one")
 	CHECK(view.cameras[0].name == "cam b");
 	CHECK(view.cameras[0].id == "b");
 	CHECK(view.cameras[1].name == "Cam C");
+}
+
+namespace {
+
+SourceInfo mic_source(const char *id, const char *name)
+{
+	return SourceInfo{id, name, false, true, false};
+}
+
+// A catalog of two cameras and the mic "Shure MV7", with the cameras and mic as chosen.
+DockView view_of(const SessionSnapshot &snapshot, const std::vector<std::string> &cameras,
+		 const std::optional<std::string> &mic)
+{
+	return build_view(snapshot, {camera("a", "Cam A"), camera("b", "Cam B"), mic_source("mic", "Shure MV7")},
+			  Choice{cameras, mic}, false, en_us);
+}
+
+SessionSnapshot snapshot_in(SessionState state)
+{
+	SessionSnapshot snapshot;
+	snapshot.state = state;
+	snapshot.mic = "mic";
+	return snapshot;
+}
+
+} // namespace
+
+TEST_CASE("start is disabled and the message asks for a pick when no camera is ticked")
+{
+	const DockView view = view_of(snapshot_in(SessionState::Idle), {}, std::string("mic"));
+
+	CHECK_FALSE(view.start_enabled);
+	CHECK(view.message == "Pick at least one camera and the mic");
+}
+
+TEST_CASE("start is disabled and the message asks for a pick when no mic is chosen")
+{
+	const DockView view = view_of(snapshot_in(SessionState::Stopped), {"a", "b"}, std::nullopt);
+
+	CHECK_FALSE(view.start_enabled);
+	CHECK(view.message == "Pick at least one camera and the mic");
+}
+
+TEST_CASE("start is enabled and labelled start when idle or stopped with a camera and the mic chosen")
+{
+	for (const SessionState state : {SessionState::Idle, SessionState::Stopped}) {
+		const DockView view = view_of(snapshot_in(state), {"a"}, std::string("mic"));
+
+		CHECK(view.start_enabled);
+		CHECK(view.start_label == "Start");
+		CHECK(view.message == "");
+	}
+}
+
+TEST_CASE("the button reads stop and stays enabled while measuring")
+{
+	const DockView view = view_of(snapshot_in(SessionState::Measuring), {"a"}, std::string("mic"));
+	CHECK(view.start_label == "Stop");
+	CHECK(view.start_enabled);
+
+	// The spec leaves the button unspecified while measuring: it stays enabled so a session can always be stopped, even
+	// when the last camera has been unticked.
+	const DockView none = view_of(snapshot_in(SessionState::Measuring), {}, std::string("mic"));
+	CHECK(none.start_label == "Stop");
+	CHECK(none.start_enabled);
+}
+
+TEST_CASE("reset is disabled when idle and enabled when measuring or stopped")
+{
+	CHECK_FALSE(view_of(snapshot_in(SessionState::Idle), {"a"}, std::string("mic")).reset_enabled);
+	CHECK(view_of(snapshot_in(SessionState::Measuring), {"a"}, std::string("mic")).reset_enabled);
+	CHECK(view_of(snapshot_in(SessionState::Stopped), {"a"}, std::string("mic")).reset_enabled);
+}
+
+TEST_CASE("a mic that hears no pattern sound is named on the message line until the flag clears")
+{
+	SessionSnapshot snapshot = snapshot_in(SessionState::Measuring);
+	snapshot.no_pattern_sound = true;
+	CHECK(view_of(snapshot, {"a"}, std::string("mic")).message ==
+	      "No pattern sound from Shure MV7 - bring the phone closer or unmute it");
+
+	snapshot.no_pattern_sound = false;
+	CHECK(view_of(snapshot, {"a"}, std::string("mic")).message == "");
+}
+
+TEST_CASE("a mic that could not be listened to is named on the message line")
+{
+	SessionSnapshot snapshot = snapshot_in(SessionState::Idle);
+	snapshot.mic_tap_failed = true;
+
+	CHECK(view_of(snapshot, {"a"}, std::string("mic")).message == "Could not listen to Shure MV7");
+}
+
+TEST_CASE("the message line shows the pick prompt, then the mic tap failure, then no sound")
+{
+	SessionSnapshot snapshot = snapshot_in(SessionState::Measuring);
+	snapshot.mic_tap_failed = true;
+	snapshot.no_pattern_sound = true;
+
+	CHECK(view_of(snapshot, {}, std::string("mic")).message == "Pick at least one camera and the mic");
+	CHECK(view_of(snapshot, {"a"}, std::string("mic")).message == "Could not listen to Shure MV7");
+
+	snapshot.mic_tap_failed = false;
+	CHECK(view_of(snapshot, {"a"}, std::string("mic")).message ==
+	      "No pattern sound from Shure MV7 - bring the phone closer or unmute it");
+}
+
+TEST_CASE("the mic list leaves out ticked cameras and marks the chosen mic")
+{
+	SourceInfo webcam = camera("webcam", "Webcam");
+	webcam.audio = true;
+	const DockView view =
+		build_view(snapshot_in(SessionState::Idle),
+			   {webcam, camera("a", "Cam A"), mic_source("mic", "Shure MV7"), mic_source("usb", "usb mic")},
+			   Choice{{"webcam"}, std::string("usb")}, false, en_us);
+
+	REQUIRE(view.mics.size() == 2);
+	CHECK(view.mics[0].name == "Shure MV7");
+	CHECK_FALSE(view.mics[0].chosen);
+	CHECK(view.mics[1].name == "usb mic");
+	CHECK(view.mics[1].id == "usb");
+	CHECK(view.mics[1].chosen);
 }

@@ -647,13 +647,13 @@ T35 → T37
 
 **Done when**:
 
-- [ ] No camera ticked or no mic chosen: Start disabled and the message "Pick at least one camera and the mic" (READ-36).
-- [ ] At least one camera and a mic, Idle or Stopped: Start enabled (READ-47). Measuring: the button reads "Stop"; otherwise "Start" (READ-45).
-- [ ] Reset is disabled in Idle and enabled in Measuring and Stopped (READ-46).
-- [ ] `no_pattern_sound` with mic "Shure MV7" gives "No pattern sound from Shure MV7 - bring the phone closer or unmute it"; a false flag gives no such message (READ-42, READ-43).
-- [ ] `mic_tap_failed` gives "Could not listen to Shure MV7". Precedence when several apply: pick-prompt, then mic tap failure, then no-sound.
-- [ ] The mic list leaves out ticked cameras.
-- [ ] Added doctest cases: at least 8. Quick gate passes.
+- [x] No camera ticked or no mic chosen: Start disabled and the message "Pick at least one camera and the mic" (READ-36). Both cases are tested; "ticked" and "chosen" come from the `Choice`.
+- [x] At least one camera and a mic, Idle or Stopped: Start enabled (READ-47). Measuring: the button reads "Stop"; otherwise "Start" (READ-45). While Measuring the button stays enabled, with or without a ticked camera, so a session can always be stopped; the spec says nothing about it (a spec-precision gap, READ-47).
+- [x] Reset is disabled in Idle and enabled in Measuring and Stopped (READ-46).
+- [x] `no_pattern_sound` with mic "Shure MV7" gives "No pattern sound from Shure MV7 - bring the phone closer or unmute it"; a false flag gives no such message (READ-42, READ-43). The mic's name is the snapshot's mic, or the choice's when the snapshot has none, looked up in the catalog.
+- [x] `mic_tap_failed` gives "Could not listen to Shure MV7". Precedence when several apply: pick-prompt, then mic tap failure, then no-sound.
+- [x] The mic list leaves out ticked cameras. `DockView` gains `mics` (`MicView`: id, name, chosen), `message`, `start_enabled`, `reset_enabled` and `start_label`.
+- [x] Added doctest cases: at least 8. Quick gate passes. Added 9. Test count: ran 155, which is 146 plus 9.
 
 **Tests**: unit
 **Gate**: quick
