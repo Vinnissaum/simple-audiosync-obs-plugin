@@ -602,11 +602,11 @@ T35 → T37
 
 **Done when**:
 
-- [ ] `data/locale/en-US.ini` holds every key in the design's table with the exact values (U+2212 never appears in the ini; the code formats the sign).
-- [ ] A `CAMERA_SYNC_LOCALE_FILE` compile definition points the tests at that file.
-- [ ] A test parses the ini and asserts every key in `strings.hpp` is present and every `CameraSync.*` key in the ini except `CameraSync.Dock.Title` is in `strings.hpp` (READ-48).
-- [ ] `fill("{value} ms - settling", {{"value", "+142"}})` returns `+142 ms - settling`; an unknown placeholder is left as written; a value containing `{` is not re-expanded.
-- [ ] Added doctest cases: 3, in `tests/viewmodel/strings.cpp`. Quick gate passes.
+- [x] `data/locale/en-US.ini` holds every key in the design's table with the exact values (U+2212 never appears in the ini; the code formats the sign). The ini keeps `CameraSync.Dock.Title` and gains the 15 keys of the table. `strings.hpp` names each key as a constant in `camera_sync::strings` and lists them all in `all_keys`.
+- [x] A `CAMERA_SYNC_LOCALE_FILE` compile definition points the tests at that file.
+- [x] A test parses the ini and asserts every key in `strings.hpp` is present and every `CameraSync.*` key in the ini except `CameraSync.Dock.Title` is in `strings.hpp` (READ-48). A second case checks the 15 values against the design's table and that no value holds U+2212.
+- [x] `fill("{value} ms - settling", {{"value", "+142"}})` returns `+142 ms - settling`; an unknown placeholder is left as written; a value containing `{` is not re-expanded. `fill` takes a `std::vector<Placeholder>` of name and value pairs.
+- [x] Added doctest cases: 3, in `tests/viewmodel/strings.cpp`. Quick gate passes. Test count: ran 137, which is 134 plus 3.
 
 **Tests**: unit
 **Gate**: quick

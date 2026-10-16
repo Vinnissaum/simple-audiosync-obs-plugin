@@ -21,9 +21,15 @@ target_sources(
     reading/mic-pipeline.cpp
     reading/session.cpp
     selection/selection-policy.cpp
+    viewmodel/strings.cpp
 )
 
-target_compile_definitions(camera-sync-tests PRIVATE CAMERA_SYNC_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
+target_compile_definitions(
+  camera-sync-tests
+  PRIVATE
+    CAMERA_SYNC_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
+    CAMERA_SYNC_LOCALE_FILE="${PROJECT_SOURCE_DIR}/data/locale/en-US.ini"
+)
 
 target_include_directories(camera-sync-tests SYSTEM PRIVATE ${PROJECT_SOURCE_DIR}/third_party)
 
