@@ -164,12 +164,12 @@ T35 → T37
 
 **Done when**:
 
-- [ ] `PatternParams::half_wrap_ns()` equals `index_max × 3 × q_ms × 1,000,000 ÷ 2`: 25,344,000,000 ns for q_ms 66 and index_max 256, and 19,200,000,000 ns for q_ms 100 and index_max 128. The spec's "25.6 s" uses the unrounded q of 66.7 ms; the test uses the integer `q_ms` the payload carries.
-- [ ] `PatternParams::from(QrPayload)` copies f, c, q_ms and index_max, and `==` compares all four.
-- [ ] `round_half_away`: 141.5 → 142, −141.5 → −142, 141.49 → 141, 0.5 → 1, −0.5 → −1, 0 → 0, −0.49 → 0.
-- [ ] `frame_interval_ms`: (30, 1) → 33.333…, (60, 1) → 16.667…, (60000, 1001) → 16.683, (30000, 1001) → 33.367, each within 0.001.
-- [ ] `tests/CMakeLists.txt` and `core/CMakeLists.txt` list the new files. Added doctest cases: 4, in `tests/reading/pattern.cpp`.
-- [ ] Quick gate passes.
+- [x] `PatternParams::half_wrap_ns()` equals `index_max × 3 × q_ms × 1,000,000 ÷ 2`: 25,344,000,000 ns for q_ms 66 and index_max 256, and 19,200,000,000 ns for q_ms 100 and index_max 128. The spec's "25.6 s" uses the unrounded q of 66.7 ms; the test uses the integer `q_ms` the payload carries.
+- [x] `PatternParams::from(QrPayload)` copies f, c, q_ms and index_max, and `==` compares all four.
+- [x] `round_half_away`: 141.5 → 142, −141.5 → −142, 141.49 → 141, 0.5 → 1, −0.5 → −1, 0 → 0, −0.49 → 0.
+- [x] `frame_interval_ms`: (30, 1) → 33.333…, (60, 1) → 16.667…, (60000, 1001) → 16.683, (30000, 1001) → 33.367, each within 0.001.
+- [x] `tests/CMakeLists.txt` and `core/CMakeLists.txt` list the new files. Added doctest cases: 4, in `tests/reading/pattern.cpp`.
+- [x] Quick gate passes. Test count: ran 30, which is 26 plus 4.
 
 **Tests**: unit
 **Gate**: quick
