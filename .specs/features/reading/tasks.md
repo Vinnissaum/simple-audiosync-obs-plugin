@@ -382,9 +382,9 @@ T35 → T37
 
 **Done when**:
 
-- [ ] Camera A's timeline is offset +100 ms and camera B's +40 ms against the same audio; after the 4 cycles, A's `live_ms` is 100 ± 1 and B's is 40 ± 1 (READ-22), each camera has 4 samples and is Settling, and neither window holds the other's samples.
-- [ ] A third run with a camera that never sees the video leaves it Looking while A and B keep their samples.
-- [ ] Added doctest cases: 2. Quick gate passes.
+- [x] Camera A's timeline is offset +100 ms and camera B's +40 ms against the same audio; after the 4 cycles, A's `live_ms` is 100 ± 1 and B's is 40 ± 1 (READ-22), each camera has 4 samples and is Settling, and neither window holds the other's samples. Measured: A 100 and B 40 (samples of 99.946 and 39.946 ms). The test plays the session's part by hand: the first video marker's payload sets the pattern of the estimator and the mic.
+- [x] A third run with a camera that never sees the video leaves it Looking while A and B keep their samples. That camera's pipeline gets grey frames at the same times.
+- [x] Added doctest cases: 2. Quick gate passes. Test count: ran 74, which is 72 plus 2.
 
 **Tests**: unit
 **Gate**: quick

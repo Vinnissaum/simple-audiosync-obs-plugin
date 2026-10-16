@@ -15,6 +15,7 @@ target_sources(
     detector/pattern-sync.cpp
     reading/pattern.cpp
     reading/estimator.cpp
+    reading/estimator-replay.cpp
     reading/camera-pipeline.cpp
     reading/mic-pipeline.cpp
 )
