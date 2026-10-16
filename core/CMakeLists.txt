@@ -36,6 +36,7 @@ target_sources(
     reading/mic-pipeline.cpp
     reading/session.cpp
     selection/selection-policy.cpp
+    viewmodel/view-model.cpp
     detector/video-detector.cpp
     detector/audio-detector.cpp
 )

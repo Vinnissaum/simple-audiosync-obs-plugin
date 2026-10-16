@@ -625,10 +625,10 @@ T35 → T37
 
 **Done when**:
 
-- [ ] `format_signed_ms`: 142 → `+142`, −60 → `−60` with U+2212 (bytes E2 88 92), 0 → `0`.
-- [ ] Looking → "Looking for the pattern"; Settling with live 142 → "+142 ms - settling"; Stable 142 → "+142 ms - video late"; Stable −60 → "−60 ms - video early"; Stable 0 → "0 ms - in sync" (READ-37 to READ-41, exact strings).
-- [ ] A camera unticked or dropped has no status text (READ-44); rows are in name order and the chosen mic is not a row.
-- [ ] Added doctest cases: at least 7, in `tests/viewmodel/view-model.cpp`. Quick gate passes.
+- [x] `format_signed_ms`: 142 → `+142`, −60 → `−60` with U+2212 (bytes E2 88 92), 0 → `0`.
+- [x] Looking → "Looking for the pattern"; Settling with live 142 → "+142 ms - settling"; Stable 142 → "+142 ms - video late"; Stable −60 → "−60 ms - video early"; Stable 0 → "0 ms - in sync" (READ-37 to READ-41, exact strings). A Settling row shows `live_ms` and a Stable row `reading_ms`, never the other. The spec gives no text for a Settling live value of 0 or below: it follows `format_signed_ms`, so "0 ms - settling" and "−60 ms - settling" (a spec-precision gap, READ-38).
+- [x] A camera unticked or dropped has no status text (READ-44); rows are in name order and the chosen mic is not a row. A ticked camera gets a status only when the session snapshot holds a row for it; an unticked one gets none even if the snapshot still does.
+- [x] Added doctest cases: at least 7, in `tests/viewmodel/view-model.cpp`. Quick gate passes. Added 9. Test count: ran 146, which is 137 plus 9. `build_view` takes the design's `bool details` already, unused until T23, so T22 and T23 do not change its callers; `DockView` holds the camera rows only until T22.
 
 **Tests**: unit
 **Gate**: quick

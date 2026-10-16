@@ -22,6 +22,7 @@ target_sources(
     reading/session.cpp
     selection/selection-policy.cpp
     viewmodel/strings.cpp
+    viewmodel/view-model.cpp
 )
 
 target_compile_definitions(
