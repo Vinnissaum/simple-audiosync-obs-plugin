@@ -794,10 +794,12 @@ T35 → T37
 
 **Done when**:
 
-- [ ] On save it writes `version` 1, `cameras` as an array of objects that each hold one camera's `uuid`, and `mic` as a string, left out when no mic is chosen (READ-54 as amended on 2026-10-16: OBS 30's `obs_data` holds arrays of objects only and writes no null).
-- [ ] On load it returns a `SavedSelection`, or `nullopt` when the key is absent or malformed, or when OBS passes no module data at all (a null `save_data`, which OBS 30.0 passes for a collection with no `modules` object); the version field is passed through for `initial_choice` to judge.
-- [ ] No rule beyond the field copy; the file is added to `CMakeLists.txt`.
-- [ ] CI gate passes on all three platforms.
+- [x] On save it writes `version` 1, `cameras` as an array of objects that each hold one camera's `uuid`, and `mic` as a string, left out when no mic is chosen (READ-54 as amended on 2026-10-16: OBS 30's `obs_data` holds arrays of objects only and writes no null). The key is `camera-sync`, a constant, not the build's name. What to save comes from a `Current` callback the controller gives the store (T32), asked at each save: on a collection switch OBS 30.0.2 fires the changing event, then saves the old collection, then loads the new one, so the answer has to stay the old collection's until the new one loads.
+- [x] On load it returns a `SavedSelection`, or `nullopt` when the key is absent or malformed, or when OBS passes no module data at all (a null `save_data`, which OBS 30.0 passes for a collection with no `modules` object); the version field is passed through for `initial_choice` to judge. `saved()` holds what the last load found, for the controller to read at the finished-loading and collection-changed events. Malformed means the key is not an object. A missing or non-numeric `version` reads as 0, and one outside an `int` as 0 rather than wrapping, which `initial_choice` treats as no saved selection; a camera with no `uuid` and an empty `mic` are skipped.
+- [x] No rule beyond the field copy; the file is added to `CMakeLists.txt`. The destructor removes the save callback, so the controller destroys the store before the frontend goes, at the exit event at the latest (after it, OBS 30.0.2 logs an error for the removal). With four sources the `target_sources` call no longer fits in 120 columns, so it takes gersemi's expanded form.
+- [x] CI gate passes on all three platforms. Quick gate: ran 158, unchanged (no test added). Checked before the push with the same `g++ -fsyntax-only` run as T27 against the OBS 30.0.2 headers.
+
+**Test Adequacy (no tests added, Check B and D vacuous):** Check A: the bullets map to `src/obs/selection-store.cpp` (`write`, `read`, `on_save`) and `CMakeLists.txt`; the gate is the CI build, and the round trip (tick, save, restart, same ticks) is walked on the rig in T34. Check C: no test was added or changed; the core's `SavedSelection` and `to_saved` hold no JSON, so their T12 tests stand. Verdict: criteria covered by the build; the rig check is open.
 
 **Tests**: none
 **Gate**: ci
