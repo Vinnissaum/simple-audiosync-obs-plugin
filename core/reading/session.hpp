@@ -57,6 +57,9 @@ struct SessionSnapshot {
 	std::vector<CameraRow> cameras; // the ticked cameras, sorted by id
 	std::optional<SourceId> mic;
 	bool mic_tap_failed = false; // the last Start could not listen to the mic
+	// While measuring: 5 s have passed since the first video marker the mic has not answered, and video markers still
+	// arrive.
+	bool no_pattern_sound = false;
 };
 
 // The measuring session: the selection, the pattern, the taps and the readings. Its control methods run on the UI
@@ -120,6 +123,8 @@ private:
 	void tap_camera(const SourceId &camera);
 	void drop_camera(const SourceId &camera, Released &released);
 	void release_taps(Released &released);
+	void restart_no_sound_wait();
+	bool no_pattern_sound(uint64_t now) const;
 
 	TapFactory &factory_;
 	Clock clock_;
@@ -132,6 +137,8 @@ private:
 	std::optional<SourceId> mic_;
 	bool mic_tap_failed_ = false;
 	std::optional<PatternParams> pattern_;
+	std::optional<uint64_t> unanswered_since_; // the first video marker since the last audio marker, or Start
+	uint64_t last_video_ns_ = 0;
 	ReadingEstimator estimator_;
 	TappedMic mic_tap_;
 	std::map<SourceId, TappedCamera> camera_taps_;

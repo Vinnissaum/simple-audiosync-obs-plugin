@@ -8,6 +8,14 @@
 
 namespace camera_sync {
 
+namespace {
+
+// How long the mic may stay silent while cameras see the pattern, and how long the cameras may stop seeing it,
+// before the dock is told.
+constexpr uint64_t no_sound_ns = 5000000000;
+
+} // namespace
+
 Session::Session(TapFactory &factory, Clock clock, Logger log, NameOf name_of)
 	: factory_(factory),
 	  clock_(std::move(clock)),
@@ -49,6 +57,7 @@ void Session::set_selection(std::vector<SourceId> cameras, std::optional<SourceI
 	mic_ = std::move(mic);
 	estimator_.clear();
 	pattern_.reset();
+	restart_no_sound_wait();
 	if (state_ != SessionState::Measuring)
 		return;
 	released.mics.push_back(std::move(mic_tap_));
@@ -77,6 +86,7 @@ StartResult Session::start(FrameRate rate)
 
 	estimator_.set_frame_interval_ms(frame_interval_ms(rate.fps_num, rate.fps_den));
 	estimator_.reset_counters();
+	restart_no_sound_wait();
 	state_ = SessionState::Measuring;
 	return StartResult::Started;
 }
@@ -88,6 +98,7 @@ void Session::stop()
 	if (state_ != SessionState::Measuring)
 		return;
 	release_taps(released);
+	restart_no_sound_wait();
 	state_ = SessionState::Stopped;
 }
 
@@ -98,6 +109,7 @@ void Session::reset()
 		return;
 	estimator_.clear();
 	pattern_.reset();
+	restart_no_sound_wait();
 }
 
 void Session::collection_changing()
@@ -153,6 +165,14 @@ void Session::on_video_marker(const SourceId &camera, const VideoMarker &marker)
 	} else if (!(params == *pattern_)) {
 		return;
 	}
+
+	// The wait for the mic starts at the first video marker no audio marker answered, and starts over once the video
+	// markers have stopped for 5 s (READ-42, READ-43).
+	const uint64_t now = clock_();
+	if (!unanswered_since_ || now - last_video_ns_ >= no_sound_ns)
+		unanswered_since_ = now;
+	last_video_ns_ = now;
+
 	estimator_.on_video_marker(camera, marker.qr_data.index, marker.timestamp);
 }
 
@@ -163,6 +183,7 @@ void Session::on_audio_marker(const AudioMarker &marker)
 	// until a camera reads one again (READ-19).
 	if (state_ != SessionState::Measuring || !pattern_)
 		return;
+	unanswered_since_.reset();
 	estimator_.on_audio_marker(static_cast<uint32_t>(marker.index), marker.timestamp);
 }
 
@@ -174,6 +195,7 @@ SessionSnapshot Session::snapshot() const
 	snapshot.cameras = estimator_.snapshot().cameras;
 	snapshot.mic = mic_;
 	snapshot.mic_tap_failed = mic_tap_failed_;
+	snapshot.no_pattern_sound = no_pattern_sound(clock_());
 	return snapshot;
 }
 
@@ -217,6 +239,18 @@ void Session::drop_camera(const SourceId &camera, Released &released)
 		return;
 	released.cameras.push_back(std::move(found->second));
 	camera_taps_.erase(found);
+}
+
+void Session::restart_no_sound_wait()
+{
+	unanswered_since_.reset();
+	last_video_ns_ = 0;
+}
+
+bool Session::no_pattern_sound(uint64_t now) const
+{
+	return state_ == SessionState::Measuring && unanswered_since_ && now - *unanswered_since_ >= no_sound_ns &&
+	       now - last_video_ns_ < no_sound_ns;
 }
 
 void Session::release_taps(Released &released)

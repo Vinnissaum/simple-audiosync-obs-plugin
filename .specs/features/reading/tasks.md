@@ -530,11 +530,11 @@ T35 → T37
 
 **Done when**:
 
-- [ ] With a fake clock: the first video marker at t = 0 and no audio marker leaves `no_pattern_sound` false at 4.999 s and true at 5.0 s while video markers keep arriving (READ-42).
-- [ ] An audio marker at any time clears it and restarts the wait for the next video marker; video markers stopping for 5 s clears it; Stop, Reset, Start and leaving Measuring clear it (READ-43).
-- [ ] A session that is Stopped or Idle never reports it.
-- [ ] A mic that was heard and then muted: audio marker at t = 0, video markers continuing, no audio marker: true at 5 s after the first video marker that followed it.
-- [ ] Added doctest cases: at least 6. Quick gate passes.
+- [x] With a fake clock: the first video marker at t = 0 and no audio marker leaves `no_pattern_sound` false at 4.999 s and true at 5.0 s while video markers keep arriving (READ-42). Only markers the session reads count: its own pattern's, while Measuring. The flag is worked out in `snapshot()` from the clock, so `tick()` plays no part in it.
+- [x] An audio marker at any time clears it and restarts the wait for the next video marker; video markers stopping for 5 s clears it; Stop, Reset, Start and leaving Measuring clear it (READ-43). Choosing another mic also restarts the wait, so one mic's silence is never reported under the next mic's name; the spec does not say. Stop restarts the wait, and every way back to Idle ends with a mic being chosen, which restarts it too, so Start's own restart cannot be told apart in a test; it stays, as the spec's rule.
+- [x] A session that is Stopped or Idle never reports it. Checked Idle, Stopped, and Idle after a collection change or a removed mic, with markers still arriving.
+- [x] A mic that was heard and then muted: audio marker at t = 0, video markers continuing, no audio marker: true at 5 s after the first video marker that followed it. False at 5.199 s, true at 5.2 s.
+- [x] Added doctest cases: at least 6. Quick gate passes. Added 6. Test count: ran 120, which is 114 plus 6.
 
 **Tests**: unit
 **Gate**: quick

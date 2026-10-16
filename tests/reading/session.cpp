@@ -887,3 +887,166 @@ TEST_CASE("session forgets every reading and the pattern and goes Idle when the 
 	CHECK(h.row("cam-a").state == CameraState::Settling);
 	CHECK(h.row("cam-a").live_ms == 40);
 }
+
+namespace {
+
+// Starts measuring cam A against the mic with the clock at 0.
+void start_measuring(Harness &h)
+{
+	h.session.set_selection({"cam-a", "cam-b"}, "mic");
+	REQUIRE(h.session.start({30, 1}) == StartResult::Started);
+}
+
+// Cam A sees a marker every 200 ms from from_ms to to_ms, the clock reading each one's time.
+void see_markers(Harness &h, uint64_t from_ms, uint64_t to_ms)
+{
+	for (uint64_t t = from_ms; t <= to_ms; t += 200) {
+		h.clock.now = t * one_ms;
+		h.session.on_video_marker("cam-a", Harness::video(static_cast<uint32_t>(t / 200 % 256), t * one_ms));
+	}
+}
+
+bool no_sound_at(Harness &h, uint64_t ms)
+{
+	h.clock.now = ms * one_ms;
+	return h.snap().no_pattern_sound;
+}
+
+} // namespace
+
+TEST_CASE("session reports no pattern sound 5 s after the first video marker the mic did not answer")
+{
+	Harness h;
+	start_measuring(h);
+
+	// READ-42: video markers from t = 0 and no audio marker.
+	see_markers(h, 0, 4800);
+	CHECK_FALSE(no_sound_at(h, 4999));
+	CHECK(no_sound_at(h, 5000));
+	CHECK(h.row("cam-a").state == CameraState::Looking);
+}
+
+TEST_CASE("session clears no pattern sound when the mic hears a marker and waits again")
+{
+	Harness h;
+	start_measuring(h);
+	see_markers(h, 0, 4800);
+	REQUIRE(no_sound_at(h, 5000));
+
+	// READ-43: an audio marker clears it, and the wait starts again at the next video marker, at 5.2 s.
+	h.session.on_audio_marker(Harness::audio(100, 5 * one_s));
+	CHECK_FALSE(h.snap().no_pattern_sound);
+	see_markers(h, 5200, 10000);
+	CHECK_FALSE(no_sound_at(h, 10199));
+	CHECK(no_sound_at(h, 10200));
+}
+
+TEST_CASE("session clears no pattern sound when the video markers stop for 5 s")
+{
+	Harness h;
+	start_measuring(h);
+	see_markers(h, 0, 4800);
+	REQUIRE(no_sound_at(h, 5000));
+
+	// READ-43: the last video marker was at 4.8 s.
+	CHECK(no_sound_at(h, 9799));
+	CHECK_FALSE(no_sound_at(h, 9800));
+
+	// Markers that come back start a new wait.
+	see_markers(h, 12000, 16800);
+	CHECK_FALSE(no_sound_at(h, 16999));
+	CHECK(no_sound_at(h, 17000));
+}
+
+TEST_CASE("session clears no pattern sound at stop, reset, start and another mic")
+{
+	Harness h;
+	start_measuring(h);
+	see_markers(h, 0, 4800);
+	REQUIRE(no_sound_at(h, 5000));
+
+	// READ-43
+	SUBCASE("stop, then start")
+	{
+		h.session.stop();
+		CHECK_FALSE(h.snap().no_pattern_sound);
+		REQUIRE(h.session.start({30, 1}) == StartResult::Started);
+		CHECK_FALSE(h.snap().no_pattern_sound);
+	}
+	SUBCASE("start after the collection changed")
+	{
+		h.session.collection_changing();
+		h.session.set_selection({"cam-a", "cam-b"}, "mic");
+		REQUIRE(h.session.start({30, 1}) == StartResult::Started);
+		CHECK_FALSE(h.snap().no_pattern_sound);
+	}
+	SUBCASE("reset")
+	{
+		h.session.reset();
+		CHECK(h.snap().state == SessionState::Measuring);
+		CHECK_FALSE(h.snap().no_pattern_sound);
+	}
+	SUBCASE("another mic")
+	{
+		h.session.set_selection({"cam-a", "cam-b"}, "mic-2");
+		CHECK(h.snap().state == SessionState::Measuring);
+		CHECK_FALSE(h.snap().no_pattern_sound);
+	}
+
+	// The wait starts again at the next video marker.
+	see_markers(h, 6000, 10800);
+	CHECK_FALSE(no_sound_at(h, 10999));
+	CHECK(no_sound_at(h, 11000));
+}
+
+TEST_CASE("session never reports no pattern sound while stopped or idle")
+{
+	Harness h;
+	SessionState state = SessionState::Idle;
+	SUBCASE("idle")
+	{
+		h.session.set_selection({"cam-a", "cam-b"}, "mic");
+	}
+	SUBCASE("stopped")
+	{
+		start_measuring(h);
+		see_markers(h, 0, 4800);
+		h.session.stop();
+		state = SessionState::Stopped;
+	}
+	SUBCASE("idle after the collection changed")
+	{
+		start_measuring(h);
+		see_markers(h, 0, 4800);
+		h.session.collection_changing();
+		h.session.set_selection({"cam-a", "cam-b"}, "mic");
+	}
+	SUBCASE("idle after the mic was removed")
+	{
+		start_measuring(h);
+		see_markers(h, 0, 4800);
+		h.session.on_mic_removed();
+	}
+
+	// Markers a tap delivers late, after measuring ended, change nothing.
+	see_markers(h, 5000, 9800);
+	REQUIRE(h.snap().state == state);
+	CHECK_FALSE(no_sound_at(h, 5000));
+	CHECK_FALSE(no_sound_at(h, 9900));
+}
+
+TEST_CASE("session reports no pattern sound for a mic that was heard and then muted")
+{
+	Harness h;
+	start_measuring(h);
+
+	// The mic hears the marker at t = 0, then nothing while the video markers go on.
+	h.session.on_video_marker("cam-a", Harness::video(0, 0));
+	h.session.on_audio_marker(Harness::audio(0, 0));
+	REQUIRE(h.row("cam-a").state == CameraState::Settling);
+	see_markers(h, 200, 5200);
+
+	// 5 s after the first video marker that followed the audio marker, the one at 0.2 s.
+	CHECK_FALSE(no_sound_at(h, 5199));
+	CHECK(no_sound_at(h, 5200));
+}
