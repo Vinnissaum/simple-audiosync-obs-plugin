@@ -36,7 +36,7 @@ struct QrPayload {
 	uint32_t f = 0;
 	uint32_t c = 0;
 	uint32_t q_ms = 0;
-	uint32_t index = -1;
+	uint32_t index = UINT32_MAX;
 	uint32_t index_max = 256;
 	uint32_t type_flags = 0;
 	bool valid = 0;
