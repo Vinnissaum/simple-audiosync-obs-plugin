@@ -40,7 +40,7 @@ bool obs_module_load(void)
 
 	camera_sync::CameraTap::register_output();
 	controller = new camera_sync::Controller();
-	camera_sync_register_dock();
+	camera_sync_register_dock(*controller);
 	return true;
 }
 

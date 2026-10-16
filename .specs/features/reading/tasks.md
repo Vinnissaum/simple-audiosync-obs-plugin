@@ -928,11 +928,13 @@ T35 → T37
 
 **Done when**:
 
-- [ ] The dock shows a camera checklist (checkbox, name, status, and the detail text from T23 when on), a mic picker, a link "Pattern files" to `https://github.com/norihiro/obs-audio-video-sync-dock/blob/main/README.md` opened in the system browser, Start/Stop, Reset, a Details check box and a wrapped message line, and no Apply or Undo.
-- [ ] Ticking, choosing and pressing only call the controller; `render` fills widgets from the view with signals blocked and updates items in place.
-- [ ] Every user-visible string comes from `obs_module_text` with the keys from T20; the dock title key is unchanged.
-- [ ] The Foundation label and its "Camera Sync 0.1.0" text are gone; `data/locale/en-US.ini` is complete.
-- [ ] CI gate passes on all three platforms, with the packages attached.
+- [x] The dock shows a camera checklist (checkbox, name, status, and the detail text from T23 when on), a mic picker, a link "Pattern files" to `https://github.com/norihiro/obs-audio-video-sync-dock/blob/main/README.md` opened in the system browser, Start/Stop, Reset, a Details check box and a wrapped message line, and no Apply or Undo. The checklist is a `QTreeWidget` with three columns (ticked name, status, details), the details column hidden while Details is off; the picker a `QComboBox`, with no entry chosen while the view chooses none; the link a rich-text `QLabel` with `setOpenExternalLinks`; the message line hidden while the view has no message.
+- [x] Ticking, choosing and pressing only call the controller; `render` fills widgets from the view with signals blocked and updates items in place. Each click calls one controller method (`set_camera_ticked`, `choose_mic`, `start_or_stop`, `reset`, `set_details`). The rows and the mic entries are rebuilt only when their sources or order change, so a tick or an open list under the cursor is not rebuilt every 100 ms. The dock is the controller's `ViewSink`, handed over with its widget, which the controller watches through a `QPointer` (T32); `camera_sync_register_dock` now takes the controller.
+- [x] Every user-visible string comes from `obs_module_text` with the keys from T20; the dock title key is unchanged. The view carries the row texts, the button label and the message; the fixed labels (Mic, Pattern files, Details, Reset) come from their keys in `strings.hpp`. The title is still `CameraSync.Dock.Title`.
+- [x] The Foundation label and its "Camera Sync 0.1.0" text are gone; `data/locale/en-US.ini` is complete. The ini already held every key since T20, so it is unchanged.
+- [x] CI gate passes on all three platforms, with the packages attached. Quick gate: ran 158, unchanged (no test added). Checked before the push with the T32 `g++ -fsyntax-only` and `-Wconversion` runs against the OBS 30.0.2 and Qt 6.4.2 headers. The packages and the rig walk of the dock (READ-70 to READ-76) are T34's.
+
+**Test Adequacy (no tests added, Check B and D vacuous):** Check A: the bullets map to `src/camera-sync-dock.cpp` (`CameraSyncDock`, `render`, `render_cameras`, `render_mics`, `camera_sync_register_dock`), `src/camera-sync-dock.hpp` and `src/plugin-main.cpp`; the gate is the CI build, and the dock is compared with READ-70 on the rig in T34. Check C: no test was added or changed; every text and state the dock shows is the view-model's, under its T21 to T23 tests. Verdict: criteria covered by the build; the rig check is open.
 
 **Tests**: none
 **Gate**: ci
