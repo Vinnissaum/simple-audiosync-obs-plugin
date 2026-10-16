@@ -457,14 +457,14 @@ T35 → T37
 
 **Done when**:
 
-- [ ] A fake `TapFactory` records creations and releases and can return a null tap for chosen sources.
-- [ ] `set_selection` and `start(FrameRate)`: with two cameras and a mic, Start enters Measuring and requests 3 taps; the estimator's F is `frame_interval_ms(fps_num, fps_den)` (READ-16, READ-24); `reset_counters` is called.
-- [ ] Start with no camera or no mic returns `NothingChosen`, requests nothing and leaves the state (READ-30).
-- [ ] A null camera tap is skipped with a Warning naming it, the other camera and the mic are tapped (READ-67). A null mic tap returns `MicTapFailed`, releases the taps already made, stays out of Measuring and sets `mic_tap_failed` (READ-68).
-- [ ] `collection_changing` releases every tap, clears readings and the selection and goes Idle; `shutdown` releases every tap (READ-28, READ-29).
-- [ ] `stop()` and `reset()` exist as lifecycle-only for now: Stop in Idle or Stopped and Reset in Idle change nothing (READ-31). Their reading semantics are T15.
-- [ ] Taps are destroyed after the session lock is released (a test destroys a fake tap whose destructor tries to take the lock through a callback and does not deadlock).
-- [ ] Added doctest cases: at least 9, in `tests/reading/session.cpp`. Quick gate passes.
+- [x] A fake `TapFactory` records creations and releases and can return a null tap for chosen sources. It also keeps the sink each tap was given, for the later tasks.
+- [x] `set_selection` and `start(FrameRate)`: with two cameras and a mic, Start enters Measuring and requests 3 taps; the estimator's F is `frame_interval_ms(fps_num, fps_den)` (READ-16, READ-24); `reset_counters` is called. F shows only in a Stable window, so the marker entry points arrive here, adopting the first marker's pattern; T15 tests the adoption and adds the rest. F is checked at 60 and 59.94 fps, with five samples spanning just under F and just over it.
+- [x] Start with no camera or no mic returns `NothingChosen`, requests nothing and leaves the state (READ-30). Checked from Idle and from Stopped.
+- [x] A null camera tap is skipped with a Warning naming it, the other camera and the mic are tapped (READ-67). A null mic tap returns `MicTapFailed`, releases the taps already made, stays out of Measuring and sets `mic_tap_failed` (READ-68). The spec gives no warning text: it is `tap.failed camera="<name>"`, or `tap.failed mic="<name>"`. The names come from a `name_of` callback, a constructor argument from here on (a `SPEC_DEVIATION` note in `session.hpp`: the design's `SessionConfig` is gone, since `start` takes the frame rate). The mic's tap is made first, as the design says, so a failed mic leaves no camera tap to release; the next Start that gets a mic tap clears `mic_tap_failed`.
+- [x] `collection_changing` releases every tap, clears readings and the selection and goes Idle; `shutdown` releases every tap (READ-28, READ-29). The collection change also forgets the pattern. `shutdown` leaves Measuring for Stopped, and the destructor calls it.
+- [x] `stop()` and `reset()` exist as lifecycle-only for now: Stop in Idle or Stopped and Reset in Idle change nothing (READ-31). Their reading semantics are T15. Markers are read only while Measuring.
+- [x] Taps are destroyed after the session lock is released (a test destroys a fake tap whose destructor tries to take the lock through a callback and does not deadlock). Every fake tap's destructor runs a delivery on another thread that takes the session's lock, and fails the case if it cannot finish within 2 s, so every test checks every release. The dedicated case covers Stop, a collection change and exit. Checked once by destroying Stop's taps under the lock: three failures, no hang.
+- [x] Added doctest cases: at least 9, in `tests/reading/session.cpp`. Quick gate passes. Added 10. Test count: ran 99, which is 89 plus 10.
 
 **Tests**: unit
 **Gate**: quick

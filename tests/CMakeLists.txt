@@ -19,6 +19,7 @@ target_sources(
     reading/estimator-replay.cpp
     reading/camera-pipeline.cpp
     reading/mic-pipeline.cpp
+    reading/session.cpp
     selection/selection-policy.cpp
 )
 
