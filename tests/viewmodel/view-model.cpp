@@ -30,6 +30,7 @@ std::string en_us(const char *key)
 		{"CameraSync.Row.VideoLate", "{value} ms - video late"},
 		{"CameraSync.Row.VideoEarly", "{value} ms - video early"},
 		{"CameraSync.Row.InSync", "0 ms - in sync"},
+		{"CameraSync.Row.Details", "received {n}, missed {m}"},
 		{"CameraSync.Message.Pick", "Pick at least one camera and the mic"},
 		{"CameraSync.Message.NoSound", "No pattern sound from {mic} - bring the phone closer or unmute it"},
 		{"CameraSync.Message.MicTap", "Could not listen to {mic}"},
@@ -267,4 +268,45 @@ TEST_CASE("the mic list leaves out ticked cameras and marks the chosen mic")
 	CHECK(view.mics[1].name == "usb mic");
 	CHECK(view.mics[1].id == "usb");
 	CHECK(view.mics[1].chosen);
+}
+
+namespace {
+
+// Camera "a" ticked and measured with 12 markers received and 2 missed, camera "b" not ticked but still in the session.
+DockView counted_view(bool details)
+{
+	CameraRow measured = row("a", CameraState::Stable, 0, 142);
+	measured.received = 12;
+	measured.missed = 2;
+	CameraRow other = row("b", CameraState::Looking);
+	other.received = 5;
+	other.missed = 1;
+	SessionSnapshot snapshot = snapshot_in(SessionState::Measuring);
+	snapshot.cameras = {measured, other};
+	return build_view(snapshot, {camera("a", "Cam A"), camera("b", "Cam B"), mic_source("mic", "Shure MV7")},
+			  Choice{{"a"}, std::string("mic")}, details, en_us);
+}
+
+} // namespace
+
+TEST_CASE("details on adds the marker counts beside the unchanged status")
+{
+	const DockView view = counted_view(true);
+
+	REQUIRE(view.cameras.size() == 2);
+	CHECK(view.show_details);
+	CHECK(view.cameras[0].details == "received 12, missed 2");
+	CHECK(view.cameras[0].status == "+142 ms - video late");
+	// A camera that is not ticked has neither a status nor counts.
+	CHECK(view.cameras[1].details == "");
+}
+
+TEST_CASE("details off leaves the detail text empty")
+{
+	const DockView view = counted_view(false);
+
+	REQUIRE(view.cameras.size() == 2);
+	CHECK_FALSE(view.show_details);
+	CHECK(view.cameras[0].details == "");
+	CHECK(view.cameras[0].status == "+142 ms - video late");
 }

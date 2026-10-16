@@ -672,9 +672,9 @@ T35 → T37
 
 **Done when**:
 
-- [ ] Details on, a camera with received 12 and missed 2 has the detail text "received 12, missed 2" in its own `CameraRowView` field, next to its unchanged status text; the dock shows both (T33).
-- [ ] Details off: the detail field is empty.
-- [ ] Added doctest cases: 2. Quick gate passes.
+- [x] Details on, a camera with received 12 and missed 2 has the detail text "received 12, missed 2" in its own `CameraRowView` field, next to its unchanged status text; the dock shows both (T33). The field is `details`, and `DockView::show_details` carries the toggle. A camera that is not ticked has an empty `details`, as it has an empty status.
+- [x] Details off: the detail field is empty.
+- [x] Added doctest cases: 2. Quick gate passes. Test count: ran 157, which is 155 plus 2.
 
 **Tests**: unit
 **Gate**: quick

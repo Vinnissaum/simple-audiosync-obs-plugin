@@ -83,7 +83,7 @@ std::string format_signed_ms(int64_t ms)
 }
 
 DockView build_view(const SessionSnapshot &snapshot, const std::vector<SourceInfo> &sources, const Choice &choice,
-		    bool /*details*/, const Translate &translate)
+		    bool details, const Translate &translate)
 {
 	DockView view;
 	for (const SourceInfo &camera : camera_list(sources, choice.mic)) {
@@ -93,8 +93,13 @@ DockView build_view(const SessionSnapshot &snapshot, const std::vector<SourceInf
 		row.ticked = contains(choice.cameras, camera.id);
 		// A camera that is not ticked, or that the session has dropped, shows nothing (READ-44).
 		if (row.ticked) {
-			if (const CameraRow *measured = find_row(snapshot.cameras, camera.id))
+			if (const CameraRow *measured = find_row(snapshot.cameras, camera.id)) {
 				row.status = status_text(*measured, translate);
+				if (details)
+					row.details = strings::fill(translate(strings::row_details),
+								    {{"n", std::to_string(measured->received)},
+								     {"m", std::to_string(measured->missed)}});
+			}
 		}
 		view.cameras.push_back(std::move(row));
 	}
@@ -107,6 +112,7 @@ DockView build_view(const SessionSnapshot &snapshot, const std::vector<SourceInf
 	view.message = message_text(snapshot, sources, choice, nothing_chosen, translate);
 	// While measuring the button stops the session, which the user can always do (READ-45, READ-47).
 	view.start_enabled = measuring || !nothing_chosen;
+	view.show_details = details;
 	view.start_label = translate(measuring ? strings::button_stop : strings::button_start);
 	view.reset_enabled = snapshot.state != SessionState::Idle; // READ-46
 	return view;

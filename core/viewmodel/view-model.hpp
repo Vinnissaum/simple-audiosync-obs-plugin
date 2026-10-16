@@ -19,7 +19,8 @@ struct CameraRowView {
 	SourceId id;
 	std::string name;
 	bool ticked = false;
-	std::string status; // empty unless the camera is ticked and the session reports it
+	std::string status;  // empty unless the camera is ticked and the session reports it
+	std::string details; // "received {n}, missed {m}" with the details toggle on; empty otherwise
 };
 
 // One entry of the mic picker.
@@ -37,6 +38,7 @@ struct DockView {
 	bool start_enabled = false;
 	bool reset_enabled = false;
 	std::string start_label; // "Stop" while measuring, "Start" otherwise
+	bool show_details = false;
 };
 
 // A signed millisecond value as the dock writes it: "+142", "−60" with U+2212, "0".
