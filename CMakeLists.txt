@@ -89,6 +89,7 @@ target_sources(
     src/obs/obs-catalog.cpp
     src/obs/selection-store.cpp
     src/obs/mic-tap.cpp
+    src/obs/camera-tap.cpp
 )
 
 set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})

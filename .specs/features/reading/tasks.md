@@ -843,11 +843,26 @@ T35 → T37
 
 **Done when**:
 
-- [ ] The view holds only the camera on channel 0; the mix runs at the canvas frame rate, 640×360 with aspect kept, NV12; the frame time passed on is the mix frame's `timestamp`.
-- [ ] The tap adds no filter, scene or property, and does not change the camera's active state; the destructor disconnects (waiting for a callback in flight), removes the view and destroys it.
-- [ ] `skipped_frames()` counts timestamp gaps over 1.5 frame intervals.
-- [ ] Construction returns null when the weak reference, the view or the mix cannot be made.
-- [ ] CI gate passes on all three platforms. **Spike-dependent**: the three claims in the design (inactive camera shown without activating, timestamp equal to Program's, mix at canvas fps) are checked in T35; if one fails, only this file changes.
+- [x] The view holds only the camera on channel 0; the mix runs at the canvas frame rate, 640×360 with aspect kept, NV12; the frame time passed on is the mix frame's `timestamp`. A view draws its channel at the source's own size, not scaled to the canvas, so the mix's base is the camera's size after its filters, or the canvas's when the camera has no size yet; its output is that size fitted into 640×360 with the aspect kept, never scaled up, and each side even for NV12. The mix copies the canvas's settings (colour space, range, scale type), and `obs_view_add2` gives every mix the main mix's frame rate anyway. The timestamp is the one every mix's frame carries for its render-loop tick.
+- [x] The tap adds no filter, scene or property, and does not change the camera's active state; the destructor disconnects (waiting for a callback in flight), removes the view and destroys it. `obs_view_set_source` activates the camera as an `AUX_VIEW`, which raises its show count only (shown, not active). The private output is not part of the scene collection. The destructor stops the output and waits until `obs_output_active` is false (libobs ends the capture on its own thread, and that thread's `video_output_disconnect` waits for a frame in flight), releases it, then removes and destroys the view, which releases the camera.
+- [x] `skipped_frames()` counts timestamp gaps over 1.5 frame intervals. Each such gap adds the frames missing from it (the gap in frame intervals, rounded, minus 1), so the count is in frames, as `Tap` says.
+- [x] Construction returns null when the weak reference, the view or the mix cannot be made. Also when no source has the UUID, the canvas has no video info, or the output cannot be created or started; a partly built tap is torn down by its destructor.
+- [x] CI gate passes on all three platforms. **Spike-dependent**: the three claims in the design (inactive camera shown without activating, timestamp equal to Program's, mix at canvas fps) are checked in T35; if one fails, only this file changes. Quick gate: ran 158, unchanged (no test added). Checked before the push with the T27 `g++ -fsyntax-only` run and `-Wconversion` against the OBS 30.0.2 headers.
+
+**SPEC_DEVIATION (in `camera-tap.hpp`, decided by the maintainer on 2026-10-16):** the frames reach the tap through a private raw `obs_output` bound to the mix's video, not through `video_output_connect`. In OBS 30.0.2 a mix renders and hands out raw frames only while its `raw_active` count is up, and only the internal `start_raw_video` raises it (outputs and encoders reach it; `video_output_connect` does not), so the design's connection would never get a frame. The output type, `camera_sync_camera_tap`, is registered once in `obs_module_load` (one line in `src/plugin-main.cpp`, outside this task's file list, approved). `design.md`'s Tap B integration row and `CameraTap` paragraph are amended in this commit.
+
+**Forwarding rule added for READ-57:** the mix renders every tick, whether or not the camera has a picture, so a frame goes on to the pipeline only while the camera reports a size. A removed camera, or one whose device stopped and cleared its frame, reports none, and its pipeline's last frame time stops moving, so the session's 2 s rule can drop it.
+
+**Risks for phase 9 (rig):**
+- The output path itself: frames arrive at the canvas rate, carry Program's timestamp for the same tick, and the camera is shown without being activated (T35, with T30's three claims).
+- Cost: each camera adds a render at its own size, a scale to at most 640×360, an NV12 conversion and a readback every frame (T36, READ-93, READ-94).
+- Size: the base is the camera's size at Start. A camera with no size yet uses the canvas's, and a camera that changes resolution while measured keeps the first size, so its picture is cropped or padded until Stop and Start (T35).
+- A device that freezes on its last frame without clearing it still reports a size, so the tap keeps delivering and READ-57 does not drop it (T34, the unplugged-camera row).
+- OBS logs three Info lines per camera at each Stop for the output (`Output 'camera-sync camera tap': stopping`, `Total frames output`, `Total drawn frames`); they hold no user data, but check them against READ-89 in the log (T34).
+- In OBS 30 other plugins' main render callbacks draw into every mix, so into each private mix too (T35).
+- While measuring, OBS counts video as active, so the video settings cannot be changed until Stop (T34).
+
+**Test Adequacy (no tests added, Check B and D vacuous):** Check A: the bullets map to `src/obs/camera-tap.cpp` (`create`, `on_frame`, `~CameraTap`, the output callbacks), `src/plugin-main.cpp` (the registration) and `CMakeLists.txt`; the gate is the CI build, and the claims above are walked on the rig. Check C: no test was added or changed. Verdict: criteria covered by the build; the rig checks are open.
 
 **Tests**: none
 **Gate**: ci

@@ -22,6 +22,7 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 
 #include "camera-sync-dock.hpp"
 #include "load-line.hpp"
+#include "obs/camera-tap.hpp"
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
@@ -32,6 +33,7 @@ bool obs_module_load(void)
 							CAMERA_SYNC_QUIRC_COMMIT);
 	obs_log(LOG_INFO, "%s", line.c_str());
 
+	camera_sync::CameraTap::register_output();
 	camera_sync_register_dock();
 	return true;
 }
