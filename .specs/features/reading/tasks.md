@@ -695,11 +695,13 @@ T35 → T37
 
 **Done when**:
 
-- [ ] `CAMERA_SYNC_COVERAGE` adds `--coverage` to the core and tests; a `core-coverage` preset (or a flag on the `core` preset) enables it; `CMakeLists.txt`, `core/CMakeLists.txt` and `CMakePresets.json` are updated.
-- [ ] The core job installs `gcovr` and runs it with `--filter core/ --exclude core/detector --fail-under-line 90`.
-- [ ] The measured value is recorded in this file. If it is below 90%, the task adds tests for the uncovered `core/` lines (named in the commit body) instead of lowering the bound.
-- [ ] Verified once on a scratch branch that is never merged: removing a core test file turns the core job red on the coverage step.
-- [ ] CI gate passes with the coverage step green.
+- [x] `CAMERA_SYNC_COVERAGE` adds `--coverage` to the core and tests; a `core-coverage` preset (or a flag on the `core` preset) enables it; `CMakeLists.txt`, `core/CMakeLists.txt` and `CMakePresets.json` are updated. The preset is a configure, build and test preset of that name (Debug, `build_core_coverage`), and `tests/CMakeLists.txt` also changed: under the option the tests link the core whole (`$<LINK_LIBRARY:WHOLE_ARCHIVE,...>`). gcovr reads only the counts a linked object writes at exit, so a core source that no test reaches would otherwise vanish from the report instead of counting as uncovered (removing `tests/reading/session.cpp` from the tests without this left the total at 97.19%).
+- [x] The core job installs `gcovr` (Ubuntu 24.04's package, with the build tools) and runs it with `--filter 'core/' --exclude 'core/detector/' --fail-under-line 90`, after building and testing the `core-coverage` preset. The step also posts the measured percentage as a notice annotation, so a run shows its number without the job log.
+- [x] The measured value is recorded in this file. Measured on 2026-10-16 with gcc 13 `gcov` JSON on the WSL machine (gcovr is not installed there, and the count is the same: a line is covered when any translation unit ran it): 637 of 654 lines, 97.40%, over `core/` without `core/detector/`. Above 90%, so no tests were added. The CI run's notice gives gcovr's own figure.
+- [x] Verified once that removing a core test file turns the coverage red. Done in a scratch copy of the tree on the WSL machine, not on a pushed scratch branch (a branch push was outside the authorisation for this batch): `tests/reading/session.cpp` removed from `tests/CMakeLists.txt`, 112 tests pass, coverage 381 of 652 lines, 58.44%, under 90%. The same removal on a scratch branch is still open if the maintainer wants it.
+- [x] CI gate passes with the coverage step green. Quick gate: ran 157, unchanged (no test added).
+
+**Test Adequacy (no tests added, Check B and D vacuous):** Check A: the five bullets map to `CMakeLists.txt` (option), `core/CMakeLists.txt` and `tests/CMakeLists.txt` (instrumentation), `CMakePresets.json` (`core-coverage`), `.github/workflows/build-project.yaml` (gcovr step), the measured 97.40% and the 58.44% negative run; no assertion exists to cite, the gate is the build. Check C: no test was added or changed, so nothing is unclaimed. Verdict: criteria covered by the build and the measured runs; the scratch-branch variant is open.
 
 **Tests**: none
 **Gate**: ci

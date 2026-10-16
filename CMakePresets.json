@@ -26,6 +26,17 @@
       }
     },
     {
+      "name": "core-coverage",
+      "inherits": ["core"],
+      "displayName": "Core only with coverage",
+      "description": "Build and test the core instrumented for line coverage, in a Debug build so that no line is optimised away",
+      "binaryDir": "${sourceDir}/build_core_coverage",
+      "cacheVariables": {
+        "CAMERA_SYNC_COVERAGE": true,
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
       "name": "macos",
       "displayName": "macOS Universal",
       "description": "Build for macOS 11.0+ (Universal binary)",
@@ -118,6 +129,12 @@
       "description": "Build the OBS-free core and its unit tests"
     },
     {
+      "name": "core-coverage",
+      "configurePreset": "core-coverage",
+      "displayName": "Core only with coverage",
+      "description": "Build the instrumented core and its unit tests"
+    },
+    {
       "name": "macos",
       "configurePreset": "macos",
       "displayName": "macOS Universal",
@@ -166,6 +183,13 @@
       "configurePreset": "core",
       "displayName": "Core only",
       "description": "Run the core's unit tests",
+      "output": {"outputOnFailure": true}
+    },
+    {
+      "name": "core-coverage",
+      "configurePreset": "core-coverage",
+      "displayName": "Core only with coverage",
+      "description": "Run the core's unit tests on the instrumented build",
       "output": {"outputOnFailure": true}
     }
   ]

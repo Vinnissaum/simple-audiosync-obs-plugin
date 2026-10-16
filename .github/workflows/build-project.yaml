@@ -88,7 +88,7 @@ jobs:
           if [[ "${RUNNER_DEBUG}" ]]; then set -x; fi
 
           sudo apt-get update
-          sudo apt-get install --yes cmake ninja-build
+          sudo apt-get install --yes cmake ninja-build gcovr
 
       - name: Build and Test Core 🧪
         run: |
@@ -98,6 +98,25 @@ jobs:
           cmake --preset core
           cmake --build --preset core
           ctest --preset core --output-on-failure
+
+      - name: Check Core Line Coverage 📏
+        run: |
+          : Check Core Line Coverage 📏
+          if [[ "${RUNNER_DEBUG}" ]]; then set -x; fi
+
+          cmake --preset core-coverage
+          cmake --build --preset core-coverage
+          ctest --preset core-coverage --output-on-failure
+
+          # The gate covers core/ without the vendored detector. gcovr writes the summary before it applies the bound.
+          status=0
+          gcovr --root . --filter 'core/' --exclude 'core/detector/' \
+            --json-summary coverage-summary.json --print-summary --fail-under-line 90 \
+            build_core_coverage || status=$?
+          if [[ -f coverage-summary.json ]]; then
+            echo "::notice title=Core line coverage::$(jq -r '"\(.line_percent)% (\(.line_covered) of \(.line_total) lines)"' coverage-summary.json)"
+          fi
+          exit "${status}"
 
   macos-build:
     name: Build for macOS 🍏

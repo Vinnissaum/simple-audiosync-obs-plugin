@@ -5,6 +5,9 @@ cmake_minimum_required(VERSION 3.28...3.30)
 # the bootstrap, which sets up the OBS dependencies.
 option(CAMERA_SYNC_CORE_ONLY "Build only the OBS-free core and its unit tests" OFF)
 
+# Instruments the core and its tests so that gcovr can measure the core's line coverage. It needs GCC or Clang.
+option(CAMERA_SYNC_COVERAGE "Instrument the core and its tests for line coverage" OFF)
+
 if(CAMERA_SYNC_CORE_ONLY)
   file(READ "${CMAKE_CURRENT_SOURCE_DIR}/buildspec.json" buildspec)
   string(JSON _name GET ${buildspec} name)

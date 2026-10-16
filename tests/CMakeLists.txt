@@ -39,6 +39,14 @@ target_include_directories(camera-sync-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 
 target_link_libraries(camera-sync-tests PRIVATE camera-sync-core)
 
+# Core header code that only the tests instantiate counts toward the core's coverage, so the tests are instrumented too.
+# The core is linked whole, because gcovr reads only the counts that a linked object writes at exit: a core source that
+# no test reaches would otherwise drop out of the report instead of showing as uncovered.
+if(CAMERA_SYNC_COVERAGE)
+  target_compile_options(camera-sync-tests PRIVATE --coverage)
+  target_link_libraries(camera-sync-tests PRIVATE "$<LINK_LIBRARY:WHOLE_ARCHIVE,camera-sync-core>")
+endif()
+
 # One CTest test per doctest test case, so ctest -R <name> runs the matching test cases.
 doctest_discover_tests(camera-sync-tests)
 
