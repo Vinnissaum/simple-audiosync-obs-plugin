@@ -8,6 +8,7 @@ target_sources(
   PRIVATE
     main.cpp
     core/load-line.cpp
+    core/log-lines.cpp
     detector/quirc.cpp
     detector/video-detector.cpp
     detector/audio-detector.cpp

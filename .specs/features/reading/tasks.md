@@ -431,12 +431,12 @@ T35 → T37
 
 **Done when**:
 
-- [ ] `measure_start(3, "Shure MV7", 60, 1)` returns `measure.start cameras=3 mic="Shure MV7" canvas_fps=60`; fps is `fps_num ÷ fps_den` with up to two decimals and trailing zeros trimmed (30 → `30`, 60000/1001 → `59.94`, 30000/1001 → `29.97`). The spec says `<fps>` without a format; this is the task's decision and goes in the code comment.
-- [ ] `measure_stop()` and `measure_reset()` return `measure.stop` and `measure.reset`.
-- [ ] `reading_stable("Cam B", 142, 9)` returns `reading.stable camera="Cam B" reading_ms=+142 spread_ms=9`; −60 gives `reading_ms=-60` and 0 gives `reading_ms=0`. The sign is ASCII because the log is for machines, not the dock (a code comment).
-- [ ] A name containing `"` is written `\"`; a name containing a backslash is written `\\` (READ-88).
-- [ ] The functions return the text without the `[camera-sync] ` prefix, which the plugin's logger adds.
-- [ ] Added doctest cases: 4, in `tests/core/log-lines.cpp`. Quick gate passes.
+- [x] `measure_start(3, "Shure MV7", 60, 1)` returns `measure.start cameras=3 mic="Shure MV7" canvas_fps=60`; fps is `fps_num ÷ fps_den` with up to two decimals and trailing zeros trimmed (30 → `30`, 60000/1001 → `59.94`, 30000/1001 → `29.97`). The spec says `<fps>` without a format; this is the task's decision and goes in the code comment. The two decimals are rounded, not cut: 24000/1001 gives `23.98`, as OBS names the rate, and 25/2 gives `12.5`.
+- [x] `measure_stop()` and `measure_reset()` return `measure.stop` and `measure.reset`.
+- [x] `reading_stable("Cam B", 142, 9)` returns `reading.stable camera="Cam B" reading_ms=+142 spread_ms=9`; −60 gives `reading_ms=-60` and 0 gives `reading_ms=0`. The sign is ASCII because the log is for machines, not the dock (a code comment).
+- [x] A name containing `"` is written `\"`; a name containing a backslash is written `\\` (READ-88). `quote(name)` is public for the session's other lines.
+- [x] The functions return the text without the `[camera-sync] ` prefix, which the plugin's logger adds.
+- [x] Added doctest cases: 4, in `tests/core/log-lines.cpp`. Quick gate passes. Test count: ran 89, which is 85 plus 4. A doctest case name must hold no `"` or backslash: `doctest_discover_tests` writes it into CTest's list unescaped, which drops that case and breaks the next one.
 
 **Tests**: unit
 **Gate**: quick

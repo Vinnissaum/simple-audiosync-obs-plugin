@@ -29,6 +29,7 @@ target_sources(
   camera-sync-core
   PRIVATE
     load-line.cpp
+    log-lines.cpp
     reading/pattern.cpp
     reading/estimator.cpp
     reading/camera-pipeline.cpp
