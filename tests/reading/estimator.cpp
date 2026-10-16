@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include <doctest/doctest.h>
 
+#include <cmath>
 #include <cstdint>
+#include <initializer_list>
 #include <string>
+#include <vector>
 
 #include "reading/estimator.hpp"
 
@@ -10,6 +13,8 @@ using camera_sync::CameraRow;
 using camera_sync::CameraState;
 using camera_sync::PatternParams;
 using camera_sync::ReadingEstimator;
+using camera_sync::SampleResult;
+using camera_sync::StableChange;
 
 namespace {
 
@@ -46,6 +51,33 @@ void pair(ReadingEstimator &estimator, const std::string &camera, uint32_t index
 {
 	estimator.on_audio_marker(index, audio_ns);
 	estimator.on_video_marker(camera, index, audio_ns + offset_ms * 1000000);
+}
+
+// F at 30 fps: 33.333 ms.
+const double f_30fps = 1000.0 / 30;
+
+int64_t to_ns(double offset_ms)
+{
+	return std::llround(offset_ms * 1e6);
+}
+
+// One sample of offset_ms, which may have a fraction, on a camera, its audio marker first. Returns what the video
+// marker did.
+SampleResult feed(ReadingEstimator &estimator, const char *camera, uint32_t index, uint64_t audio_ns, double offset_ms)
+{
+	estimator.on_audio_marker(index, audio_ns);
+	return estimator.on_video_marker(camera, index, audio_ns + to_ns(offset_ms));
+}
+
+// Samples of these offsets on a camera, one marker cycle apart, from this index and audio time on.
+void feed_all(ReadingEstimator &estimator, const char *camera, uint32_t index, uint64_t first_ns,
+	      std::initializer_list<double> offsets)
+{
+	for (double offset_ms : offsets) {
+		feed(estimator, camera, index, first_ns, offset_ms);
+		index++;
+		first_ns += cycle_ns;
+	}
 }
 
 } // namespace
@@ -173,8 +205,8 @@ TEST_CASE("estimator keeps one window per camera against the same audio markers"
 	estimator.add_camera("b");
 	estimator.add_camera("c");
 
-	// Camera a's video trails the mic by 100 ms and camera b's by 40 ms, and both reach the estimator after the audio
-	// marker. Camera c's video leads by 20 ms and reaches it before.
+	// Camera a's video trails the mic by 100 ms and camera b's by 40 ms, and both reach the estimator after the
+	// audio marker. Camera c's video leads by 20 ms and reaches it before.
 	for (uint32_t k = 0; k < 3; k++) {
 		const uint64_t audio_ns = ms(10000) + k * cycle_ns;
 		estimator.on_video_marker("c", k, audio_ns - ms(20));
@@ -412,4 +444,227 @@ TEST_CASE("estimator ignores a video marker of a camera that is not added")
 	estimator.remove_camera("a");
 	pair(estimator, "a", 2, ms(10000) + cycle_ns, 100);
 	CHECK(estimator.snapshot().cameras.empty());
+}
+
+TEST_CASE("estimator counts a window spanning exactly F as within one frame")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.set_frame_interval_ms(33.0);
+	estimator.add_camera("exact");
+	estimator.add_camera("over");
+
+	const double exact[] = {100, 110, 120, 130, 133};
+	const double over[] = {100, 110, 120, 130, 133.01};
+	for (uint32_t k = 0; k < 5; k++) {
+		const uint64_t audio_ns = ms(10000) + k * cycle_ns;
+		estimator.on_audio_marker(k, audio_ns);
+		estimator.on_video_marker("exact", k, audio_ns + to_ns(exact[k]));
+		estimator.on_video_marker("over", k, audio_ns + to_ns(over[k]));
+	}
+
+	CHECK(row(estimator, "exact").state == CameraState::Stable);
+	CHECK(row(estimator, "exact").reading_ms == 120);
+	CHECK(row(estimator, "over").state == CameraState::Settling);
+}
+
+TEST_CASE("estimator makes five samples within F Stable at their median, halves away from zero")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.set_frame_interval_ms(f_30fps);
+	estimator.add_camera("cam");
+
+	// The median differs from the mean (136.2) and from the latest sample (125).
+	double sign = 1;
+	int64_t expected = 0;
+	SUBCASE("median 141.5")
+	{
+		sign = 1;
+		expected = 142;
+	}
+	SUBCASE("median -141.5")
+	{
+		sign = -1;
+		expected = -142;
+	}
+
+	const double offsets[] = {120, 141.5, 149.5, 145, 125};
+	for (uint32_t k = 0; k < 4; k++)
+		feed(estimator, "cam", k, ms(10000) + k * cycle_ns, sign * offsets[k]);
+	CHECK(row(estimator, "cam").state == CameraState::Settling);
+
+	feed(estimator, "cam", 4, ms(10000) + 4 * cycle_ns, sign * offsets[4]);
+	CHECK(row(estimator, "cam").state == CameraState::Stable);
+	CHECK(row(estimator, "cam").reading_ms == expected);
+	CHECK(row(estimator, "cam").samples == 5);
+}
+
+TEST_CASE("estimator decides stability on the five most recent samples by video time")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.set_frame_interval_ms(f_30fps);
+	estimator.add_camera("cam");
+
+	// The oldest of the five is 100 ms away from the others.
+	const uint64_t first_ns = ms(10000);
+	feed_all(estimator, "cam", 1, first_ns + cycle_ns, {200, 100, 100, 100, 100});
+	REQUIRE(row(estimator, "cam").state == CameraState::Settling);
+
+	// A sample from an earlier flash is not among the five most recent, so the 200 stays.
+	feed(estimator, "cam", 0, first_ns, 100);
+	CHECK(row(estimator, "cam").state == CameraState::Settling);
+
+	// A sample from a later flash pushes the 200 out.
+	feed(estimator, "cam", 6, first_ns + 6 * cycle_ns, 100);
+	CHECK(row(estimator, "cam").state == CameraState::Stable);
+	CHECK(row(estimator, "cam").reading_ms == 100);
+}
+
+TEST_CASE("estimator keeps a Stable camera's reading when its next five samples spread wider than F")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.set_frame_interval_ms(f_30fps);
+	estimator.add_camera("cam");
+	feed_all(estimator, "cam", 0, ms(10000), {142, 142, 142, 142, 142});
+	REQUIRE(row(estimator, "cam").state == CameraState::Stable);
+
+	const double offsets[] = {100, 200, 150, 300, 250};
+	for (uint32_t k = 0; k < 5; k++) {
+		CAPTURE(k);
+		feed(estimator, "cam", 5 + k, ms(10000) + (5 + k) * cycle_ns, offsets[k]);
+		CHECK(row(estimator, "cam").state == CameraState::Stable);
+		CHECK(row(estimator, "cam").reading_ms == 142);
+	}
+}
+
+TEST_CASE("estimator keeps a Stable camera's reading when its samples stop")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.set_frame_interval_ms(f_30fps);
+	estimator.add_camera("cam");
+	feed_all(estimator, "cam", 0, ms(10000), {142, 142, 142, 142, 142});
+	REQUIRE(row(estimator, "cam").state == CameraState::Stable);
+
+	// The phone faces away: the mic keeps hearing the pattern and the camera sees nothing.
+	for (uint32_t k = 5; k < 20; k++)
+		estimator.on_audio_marker(k, ms(10000) + k * cycle_ns);
+
+	CHECK(row(estimator, "cam").state == CameraState::Stable);
+	CHECK(row(estimator, "cam").reading_ms == 142);
+}
+
+TEST_CASE("estimator replaces a Stable camera's reading with the median of a later window within F")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.set_frame_interval_ms(f_30fps);
+	estimator.add_camera("cam");
+	feed_all(estimator, "cam", 0, ms(10000), {142, 142, 142, 142, 142});
+	REQUIRE(row(estimator, "cam").reading_ms == 142);
+
+	// Until the window holds only the new samples it spans more than F.
+	const double offsets[] = {100, 101, 99, 100, 102};
+	for (uint32_t k = 0; k < 4; k++) {
+		CAPTURE(k);
+		feed(estimator, "cam", 5 + k, ms(10000) + (5 + k) * cycle_ns, offsets[k]);
+		CHECK(row(estimator, "cam").reading_ms == 142);
+	}
+	feed(estimator, "cam", 9, ms(10000) + 9 * cycle_ns, offsets[4]);
+	CHECK(row(estimator, "cam").state == CameraState::Stable);
+	CHECK(row(estimator, "cam").reading_ms == 100);
+}
+
+TEST_CASE("estimator shows the latest sample of a camera that was never stable as its live value")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.set_frame_interval_ms(f_30fps);
+	estimator.add_camera("cam");
+
+	// Seven samples that never agree: the window turns over and the camera stays Settling.
+	const double offsets[] = {100, 150, 200, 250, 300, 141.5, 90.4};
+	const int64_t live[] = {100, 150, 200, 250, 300, 142, 90};
+	for (uint32_t k = 0; k < 7; k++) {
+		CAPTURE(k);
+		feed(estimator, "cam", k, ms(10000) + k * cycle_ns, offsets[k]);
+		CHECK(row(estimator, "cam").state == CameraState::Settling);
+		CHECK(row(estimator, "cam").live_ms == live[k]);
+	}
+}
+
+TEST_CASE("estimator returns the reading and spread when a video marker makes a camera Stable or changes its reading")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.set_frame_interval_ms(f_30fps);
+	estimator.add_camera("cam");
+
+	// A video marker with no audio marker forms nothing.
+	SampleResult result = estimator.on_video_marker("cam", 100, ms(9000));
+	CHECK_FALSE(result.formed_sample);
+	CHECK_FALSE(result.stable_changed);
+
+	const double offsets[] = {120, 141.5, 149.5, 145, 125};
+	for (uint32_t k = 0; k < 4; k++) {
+		CAPTURE(k);
+		result = feed(estimator, "cam", k, ms(10000) + k * cycle_ns, offsets[k]);
+		CHECK(result.formed_sample);
+		CHECK_FALSE(result.stable_changed);
+	}
+
+	// The fifth makes it Stable at 142; the window spans 149.5 - 120 = 29.5, rounded to 30.
+	result = feed(estimator, "cam", 4, ms(10000) + 4 * cycle_ns, offsets[4]);
+	CHECK(result.formed_sample);
+	CHECK(result.stable_changed);
+	CHECK(result.reading_ms == 142);
+	CHECK(result.spread_ms == 30);
+
+	// A window with the same median changes nothing.
+	result = feed(estimator, "cam", 5, ms(10000) + 5 * cycle_ns, 141.5);
+	CHECK(result.formed_sample);
+	CHECK_FALSE(result.stable_changed);
+
+	// The window 149.5, 145, 125, 141.5, 150 has its median at 145 and spans 25.
+	result = feed(estimator, "cam", 6, ms(10000) + 6 * cycle_ns, 150);
+	CHECK(result.stable_changed);
+	CHECK(result.reading_ms == 145);
+	CHECK(result.spread_ms == 25);
+}
+
+TEST_CASE("estimator returns each camera an audio marker makes Stable")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.set_frame_interval_ms(f_30fps);
+	estimator.add_camera("a");
+	estimator.add_camera("b");
+	estimator.add_camera("c");
+
+	// Four samples each: a at 100, b at 40 to 50, c far apart.
+	feed_all(estimator, "a", 0, ms(10000), {100, 100, 100, 100});
+	feed_all(estimator, "b", 10, ms(20000), {40, 50, 45, 42});
+	feed_all(estimator, "c", 20, ms(30000), {0, 100, 200, 300});
+
+	// The fifth video markers wait for one audio marker.
+	const uint64_t audio_ns = ms(40000);
+	estimator.on_video_marker("a", 30, audio_ns + ms(100));
+	estimator.on_video_marker("b", 30, audio_ns + ms(44));
+	estimator.on_video_marker("c", 30, audio_ns + ms(400));
+	const std::vector<StableChange> changes = estimator.on_audio_marker(30, audio_ns);
+
+	REQUIRE(changes.size() == 2);
+	CHECK(changes[0].camera == "a");
+	CHECK(changes[0].reading_ms == 100);
+	CHECK(changes[0].spread_ms == 0);
+	CHECK(changes[1].camera == "b");
+	CHECK(changes[1].reading_ms == 44);
+	CHECK(changes[1].spread_ms == 10);
+
+	// An audio marker that changes no reading returns nothing.
+	estimator.on_video_marker("a", 31, audio_ns + cycle_ns + ms(100));
+	CHECK(estimator.on_audio_marker(31, audio_ns + cycle_ns).empty());
 }

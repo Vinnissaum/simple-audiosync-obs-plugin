@@ -2,6 +2,7 @@
 #include "reading/estimator.hpp"
 
 #include <algorithm>
+#include <array>
 #include <utility>
 
 namespace camera_sync {
@@ -31,6 +32,11 @@ void ReadingEstimator::set_pattern(const PatternParams &pattern)
 	pattern_ = pattern;
 }
 
+void ReadingEstimator::set_frame_interval_ms(double ms)
+{
+	frame_interval_ms_ = ms;
+}
+
 void ReadingEstimator::add_camera(const SourceId &camera)
 {
 	cameras_.emplace(camera, Camera{});
@@ -55,11 +61,12 @@ void ReadingEstimator::clear()
 	audio_.clear();
 }
 
-void ReadingEstimator::on_video_marker(const SourceId &id, uint32_t index, uint64_t time_ns)
+SampleResult ReadingEstimator::on_video_marker(const SourceId &id, uint32_t index, uint64_t time_ns)
 {
+	SampleResult result;
 	auto found = cameras_.find(id);
 	if (found == cameras_.end())
-		return;
+		return result;
 	Camera &camera = found->second;
 	const Marker video{index, time_ns};
 
@@ -80,14 +87,21 @@ void ReadingEstimator::on_video_marker(const SourceId &id, uint32_t index, uint6
 
 	if (!nearest) {
 		push_capped(camera.waiting, video);
-		return;
+		return result;
 	}
 	nearest->paired.push_back(id);
-	add_sample(camera, time_ns, nearest->marker.time_ns);
+	result.formed_sample = true;
+	if (const std::optional<int64_t> spread_ms = add_sample(camera, time_ns, nearest->marker.time_ns)) {
+		result.stable_changed = true;
+		result.reading_ms = camera.reading_ms;
+		result.spread_ms = *spread_ms;
+	}
+	return result;
 }
 
-void ReadingEstimator::on_audio_marker(uint32_t index, uint64_t time_ns)
+std::vector<StableChange> ReadingEstimator::on_audio_marker(uint32_t index, uint64_t time_ns)
 {
+	std::vector<StableChange> changes;
 	AudioEntry entry{{index, time_ns}, {}};
 
 	// Each camera's nearest waiting video marker of the index pairs with it.
@@ -109,10 +123,12 @@ void ReadingEstimator::on_audio_marker(uint32_t index, uint64_t time_ns)
 		const uint64_t video_ns = nearest->time_ns;
 		camera.waiting.erase(nearest);
 		entry.paired.push_back(id);
-		add_sample(camera, video_ns, time_ns);
+		if (const std::optional<int64_t> spread_ms = add_sample(camera, video_ns, time_ns))
+			changes.push_back(StableChange{id, camera.reading_ms, *spread_ms});
 	}
 
 	push_capped(audio_, std::move(entry));
+	return changes;
 }
 
 EstimatorSnapshot ReadingEstimator::snapshot() const
@@ -123,9 +139,10 @@ EstimatorSnapshot ReadingEstimator::snapshot() const
 		row.id = id;
 		row.samples = static_cast<uint32_t>(camera.window.size());
 		if (!camera.window.empty()) {
-			row.state = CameraState::Settling;
+			row.state = camera.stable ? CameraState::Stable : CameraState::Settling;
 			row.live_ms = round_half_away(camera.window.back().ms);
 		}
+		row.reading_ms = camera.reading_ms;
 		snapshot.cameras.push_back(row);
 	}
 	return snapshot;
@@ -136,17 +153,37 @@ bool ReadingEstimator::pairs(const Marker &video, const Marker &audio) const
 	return video.index == audio.index && distance(video.time_ns, audio.time_ns) < pattern_.half_wrap_ns();
 }
 
-void ReadingEstimator::add_sample(Camera &camera, uint64_t video_ns, uint64_t audio_ns)
+std::optional<int64_t> ReadingEstimator::add_sample(Camera &camera, uint64_t video_ns, uint64_t audio_ns)
 {
 	// Each difference is taken in the order that keeps it unsigned.
 	const double ms = video_ns >= audio_ns ? (video_ns - audio_ns) / 1e6 : -((audio_ns - video_ns) / 1e6);
 
-	// Inserted by video time, and the oldest leaves a full window: a sample older than all five is the one that leaves.
+	// Inserted by video time, and the oldest leaves a full window, so a sample older than all five is the one that
+	// leaves.
 	std::vector<Sample> &window = camera.window;
 	const auto earlier = [](uint64_t time, const Sample &other) { return time < other.video_ns; };
 	window.insert(std::upper_bound(window.begin(), window.end(), video_ns, earlier), Sample{video_ns, ms});
 	if (window.size() > window_size)
 		window.erase(window.begin());
+
+	// A full window within one frame, F included, makes the camera Stable at the median. A wider one changes
+	// nothing, so a Stable camera keeps its reading.
+	if (window.size() < window_size)
+		return std::nullopt;
+	std::array<double, window_size> sorted;
+	for (size_t i = 0; i < window_size; i++)
+		sorted[i] = window[i].ms;
+	std::sort(sorted.begin(), sorted.end());
+	const double spread = sorted.back() - sorted.front();
+	if (spread > frame_interval_ms_)
+		return std::nullopt;
+
+	const int64_t reading_ms = round_half_away(sorted[window_size / 2]);
+	if (camera.stable && camera.reading_ms == reading_ms)
+		return std::nullopt;
+	camera.stable = true;
+	camera.reading_ms = reading_ms;
+	return round_half_away(spread);
 }
 
 } // namespace camera_sync

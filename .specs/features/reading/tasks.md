@@ -218,13 +218,13 @@ T35 → T37
 
 **Done when**:
 
-- [ ] `set_frame_interval_ms(double)` exists; with F = 33.0 a window spanning 33.0 is Stable and one spanning 33.01 is Settling (the boundary is inclusive, READ-12).
-- [ ] Five samples within F make the camera Stable; the reading is the median rounded half away from zero: medians 141.5 → 142 and −141.5 → −142.
-- [ ] A Stable camera whose next five samples span more than F stays Stable with the old reading; one that gets no more samples stays Stable (READ-13, READ-14).
-- [ ] A later window within F replaces the reading with its median (READ-15).
-- [ ] A Settling camera that has never been stable shows `live_ms` as the latest sample rounded (READ-11).
-- [ ] `on_video_marker` and `on_audio_marker` return which cameras became Stable or changed reading, with the window spread (maximum minus minimum, rounded) for the `reading.stable` log line in T19.
-- [ ] Added doctest cases: at least 8, covering each bullet. Quick gate passes.
+- [x] `set_frame_interval_ms(double)` exists; with F = 33.0 a window spanning 33.0 is Stable and one spanning 33.01 is Settling (the boundary is inclusive, READ-12). F is 0 until it is set, so nothing turns Stable before the session sets it at Start.
+- [x] Five samples within F make the camera Stable; the reading is the median rounded half away from zero: medians 141.5 → 142 and −141.5 → −142.
+- [x] A Stable camera whose next five samples span more than F stays Stable with the old reading; one that gets no more samples stays Stable (READ-13, READ-14).
+- [x] A later window within F replaces the reading with its median (READ-15).
+- [x] A Settling camera that has never been stable shows `live_ms` as the latest sample rounded (READ-11).
+- [x] `on_video_marker` and `on_audio_marker` return which cameras became Stable or changed reading, with the window spread (maximum minus minimum, rounded) for the `reading.stable` log line in T19. `on_video_marker` returns a `SampleResult` (`formed_sample`, `stable_changed`, `reading_ms`, `spread_ms`; the design's struct plus the reading the log line needs), and `on_audio_marker` a `std::vector<StableChange>` (camera, `reading_ms`, `spread_ms`).
+- [x] Added doctest cases: at least 8, covering each bullet. Quick gate passes. Test count: ran 54, which is 45 plus 9.
 
 **Tests**: unit
 **Gate**: quick
