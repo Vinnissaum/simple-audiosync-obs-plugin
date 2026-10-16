@@ -770,10 +770,12 @@ T35 → T37
 
 **Done when**:
 
-- [ ] `async_video` is set from `OBS_SOURCE_ASYNC_VIDEO` and `audio` from `OBS_SOURCE_AUDIO`; `id` is the UUID; every reference released.
-- [ ] `in_program` is true for sources in the Program scene, in a nested scene and in a group, with a guard against a scene that contains itself.
-- [ ] The file is added to the plugin's sources in `CMakeLists.txt`; no rule is added here (the policy functions decide).
-- [ ] CI gate passes on all three platforms. The rig check is in T34.
+- [x] `async_video` is set from `OBS_SOURCE_ASYNC_VIDEO` and `audio` from `OBS_SOURCE_AUDIO`; `id` is the UUID; every reference released. `async_video` needs both bits of `OBS_SOURCE_ASYNC_VIDEO`. `obs_enum_sources` lends each source for the length of the call, so the only reference taken is the Program scene's from `obs_frontend_get_current_scene`, and it is released. Every source `obs_enum_sources` lists is returned; in OBS 30.0.2 that is the inputs and the groups, and a group has neither flag.
+- [x] `in_program` is true for sources in the Program scene, in a nested scene and in a group, with a guard against a scene that contains itself. Each item's source is walked through `obs_group_or_scene_from_source`, and a set of the scenes already walked ends a loop. `obs_frontend_get_current_scene` returns Program in studio mode too (OBS 30.0.2, `UI/api-interface.cpp`).
+- [x] The file is added to the plugin's sources in `CMakeLists.txt`; no rule is added here (the policy functions decide). `ObsCatalog` has the one method, `list()`, and no state.
+- [x] CI gate passes on all three platforms. The rig check is in T34. Quick gate: ran 158, unchanged (no test added). Before the push, `src/obs/obs-catalog.cpp` was checked with `g++ 13 -std=c++17 -fsyntax-only -Wall -Wextra -Werror` against the libobs and frontend headers of OBS 30.0.2's source archive (its SHA-256 matches `buildspec.json`), in a scratch directory outside the repository.
+
+**Test Adequacy (no tests added, Check B and D vacuous):** Check A: the bullets map to `src/obs/obs-catalog.cpp` (`list_source`, `scan_scene`, `scan_item`) and `CMakeLists.txt`; the gate is the CI build, and the behavior is walked on the rig in T34. Check C: no test was added or changed. Verdict: criteria covered by the build; the rig check is open.
 
 **Tests**: none
 **Gate**: ci
