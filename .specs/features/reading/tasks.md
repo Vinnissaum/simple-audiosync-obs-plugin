@@ -190,16 +190,16 @@ T35 → T37
 
 **Done when**:
 
-- [ ] Interfaces as in the design: `set_pattern`, `add_camera`, `remove_camera`, `clear_camera`, `clear`, `on_video_marker`, `on_audio_marker`, `snapshot`. Not thread-safe yet (T5).
-- [ ] Video at 1.142 s and audio at 1.000 s with the same index give a sample of +142; the sign flips with the order of the times (READ-01).
-- [ ] Different indexes form no sample; times exactly half a wrap apart form none, one nanosecond under form one (READ-02).
-- [ ] Two audio markers with the video marker's index: the one nearest in time pairs (READ-03).
-- [ ] Audio before video and video before audio give the same sample (READ-04).
-- [ ] Two cameras fed the same audio get separate windows; removing one leaves the other's reading (READ-05).
-- [ ] 257 unpaired video markers on one camera drop the oldest; 257 audio markers drop the oldest; a video marker whose audio was dropped forms no sample (READ-06).
-- [ ] No sample → Looking; first sample → Settling with `live_ms` rounded; four samples → Settling; a sixth sample older than all five in the window is dropped; a newer one pushes out the oldest by video time (READ-09, READ-10, READ-11).
-- [ ] `clear()` returns every camera to Looking; `clear_camera` affects one; both leave cameras registered. A marker for an unregistered camera is ignored.
-- [ ] Added doctest cases: at least 10, in `tests/reading/estimator.cpp`. Quick gate passes.
+- [x] Interfaces as in the design: `set_pattern`, `add_camera`, `remove_camera`, `clear_camera`, `clear`, `on_video_marker`, `on_audio_marker`, `snapshot`. Not thread-safe yet (T5). The two marker entry points return nothing until T4 gives them its stable-change results.
+- [x] Video at 1.142 s and audio at 1.000 s with the same index give a sample of +142; the sign flips with the order of the times (READ-01).
+- [x] Different indexes form no sample; times exactly half a wrap apart form none, one nanosecond under form one (READ-02).
+- [x] Two audio markers with the video marker's index: the one nearest in time pairs (READ-03).
+- [x] Audio before video and video before audio give the same sample (READ-04).
+- [x] Two cameras fed the same audio get separate windows; removing one leaves the other's reading (READ-05). An audio marker stays in its list after it pairs and pairs once with each camera; the design's "a paired marker leaves its list" holds for video markers only (a `SPEC_DEVIATION` note in `estimator.hpp`), and a repeated video marker forms no second sample.
+- [x] 257 unpaired video markers on one camera drop the oldest; 257 audio markers drop the oldest; a video marker whose audio was dropped forms no sample (READ-06).
+- [x] No sample → Looking; first sample → Settling with `live_ms` rounded; four samples → Settling; a sixth sample older than all five in the window is dropped; a newer one pushes out the oldest by video time (READ-09, READ-10, READ-11). `live_ms` is the newest sample by video time, so arrival order never changes it.
+- [x] `clear()` returns every camera to Looking; `clear_camera` affects one; both leave cameras registered. A marker for an unregistered camera is ignored.
+- [x] Added doctest cases: at least 10, in `tests/reading/estimator.cpp`. Quick gate passes. Test count: ran 45, which is 30 plus 15.
 
 **Tests**: unit
 **Gate**: quick

@@ -1,0 +1,415 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+#include <doctest/doctest.h>
+
+#include <cstdint>
+#include <string>
+
+#include "reading/estimator.hpp"
+
+using camera_sync::CameraRow;
+using camera_sync::CameraState;
+using camera_sync::PatternParams;
+using camera_sync::ReadingEstimator;
+
+namespace {
+
+// Sync Dock's pattern at q=4 frames and 60 fps: a QR code lasts 66 ms, a marker cycle 3 x 66 ms and a wrap of 256
+// indexes 50.688 s, so half a wrap is 25.344 s.
+const PatternParams pattern{884, 2, 66, 256};
+constexpr uint64_t cycle_ns = 198000000;
+constexpr uint64_t half_wrap_ns = 25344000000;
+
+constexpr uint64_t ms(uint64_t value)
+{
+	return value * 1000000;
+}
+
+bool has_row(const ReadingEstimator &estimator, const std::string &camera)
+{
+	for (const CameraRow &row : estimator.snapshot().cameras)
+		if (row.id == camera)
+			return true;
+	return false;
+}
+
+CameraRow row(const ReadingEstimator &estimator, const std::string &camera)
+{
+	for (const CameraRow &row : estimator.snapshot().cameras)
+		if (row.id == camera)
+			return row;
+	FAIL("no row for camera ", camera);
+	return {};
+}
+
+// One sample on a camera: an audio marker at audio_ns and the camera's video marker offset_ms after it.
+void pair(ReadingEstimator &estimator, const std::string &camera, uint32_t index, uint64_t audio_ns, int64_t offset_ms)
+{
+	estimator.on_audio_marker(index, audio_ns);
+	estimator.on_video_marker(camera, index, audio_ns + offset_ms * 1000000);
+}
+
+} // namespace
+
+TEST_CASE("estimator forms a sample of the video time minus the audio time")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.add_camera("cam");
+
+	SUBCASE("video late")
+	{
+		estimator.on_audio_marker(7, ms(1000));
+		estimator.on_video_marker("cam", 7, ms(1142));
+		CHECK(row(estimator, "cam").samples == 1);
+		CHECK(row(estimator, "cam").live_ms == 142);
+	}
+	SUBCASE("video early")
+	{
+		estimator.on_audio_marker(7, ms(1142));
+		estimator.on_video_marker("cam", 7, ms(1000));
+		CHECK(row(estimator, "cam").samples == 1);
+		CHECK(row(estimator, "cam").live_ms == -142);
+	}
+}
+
+TEST_CASE("estimator forms no sample from markers of different indexes")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.add_camera("cam");
+
+	// An audio marker waiting for a video marker, then a video marker waiting for an audio marker.
+	estimator.on_audio_marker(7, ms(1000));
+	estimator.on_video_marker("cam", 8, ms(1142));
+	estimator.on_audio_marker(9, ms(1200));
+
+	CHECK(row(estimator, "cam").samples == 0);
+	CHECK(row(estimator, "cam").state == CameraState::Looking);
+}
+
+TEST_CASE("estimator pairs only markers less than half a wrap apart")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.add_camera("half");
+	estimator.add_camera("under");
+	const uint64_t audio_ns = ms(30000);
+
+	SUBCASE("audio first")
+	{
+		estimator.on_audio_marker(7, audio_ns);
+		estimator.on_video_marker("half", 7, audio_ns + half_wrap_ns);
+		estimator.on_video_marker("under", 7, audio_ns + half_wrap_ns - 1);
+		CHECK(row(estimator, "half").samples == 0);
+		CHECK(row(estimator, "under").samples == 1);
+		CHECK(row(estimator, "under").live_ms == 25344);
+	}
+	SUBCASE("video first")
+	{
+		estimator.on_video_marker("half", 7, audio_ns);
+		estimator.on_video_marker("under", 7, audio_ns + 1);
+		estimator.on_audio_marker(7, audio_ns + half_wrap_ns);
+		CHECK(row(estimator, "half").samples == 0);
+		CHECK(row(estimator, "under").samples == 1);
+		CHECK(row(estimator, "under").live_ms == -25344);
+	}
+}
+
+TEST_CASE("estimator pairs a video marker with the nearest audio marker of its index")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.add_camera("cam");
+
+	SUBCASE("the later of two, listed second")
+	{
+		estimator.on_audio_marker(5, ms(1000));
+		estimator.on_audio_marker(5, ms(1100));
+		estimator.on_video_marker("cam", 5, ms(1142));
+		CHECK(row(estimator, "cam").live_ms == 42);
+	}
+	SUBCASE("the later of two, listed first")
+	{
+		estimator.on_audio_marker(5, ms(1100));
+		estimator.on_audio_marker(5, ms(1000));
+		estimator.on_video_marker("cam", 5, ms(1142));
+		CHECK(row(estimator, "cam").live_ms == 42);
+	}
+	SUBCASE("the earlier of two")
+	{
+		estimator.on_audio_marker(5, ms(1000));
+		estimator.on_audio_marker(5, ms(1300));
+		estimator.on_video_marker("cam", 5, ms(1142));
+		CHECK(row(estimator, "cam").live_ms == 142);
+	}
+	CHECK(row(estimator, "cam").samples == 1);
+}
+
+TEST_CASE("estimator forms the same sample whichever marker arrives first")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.add_camera("cam");
+
+	SUBCASE("audio first")
+	{
+		estimator.on_audio_marker(3, ms(2000));
+		estimator.on_video_marker("cam", 3, ms(2142));
+	}
+	SUBCASE("video first")
+	{
+		estimator.on_video_marker("cam", 3, ms(2142));
+		estimator.on_audio_marker(3, ms(2000));
+	}
+	CHECK(row(estimator, "cam").samples == 1);
+	CHECK(row(estimator, "cam").live_ms == 142);
+}
+
+TEST_CASE("estimator keeps one window per camera against the same audio markers")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.add_camera("a");
+	estimator.add_camera("b");
+	estimator.add_camera("c");
+
+	// Camera a's video trails the mic by 100 ms and camera b's by 40 ms, and both reach the estimator after the audio
+	// marker. Camera c's video leads by 20 ms and reaches it before.
+	for (uint32_t k = 0; k < 3; k++) {
+		const uint64_t audio_ns = ms(10000) + k * cycle_ns;
+		estimator.on_video_marker("c", k, audio_ns - ms(20));
+		estimator.on_audio_marker(k, audio_ns);
+		estimator.on_video_marker("a", k, audio_ns + ms(100));
+		estimator.on_video_marker("b", k, audio_ns + ms(40));
+	}
+
+	CHECK(row(estimator, "a").samples == 3);
+	CHECK(row(estimator, "a").live_ms == 100);
+	CHECK(row(estimator, "b").samples == 3);
+	CHECK(row(estimator, "b").live_ms == 40);
+	CHECK(row(estimator, "c").samples == 3);
+	CHECK(row(estimator, "c").live_ms == -20);
+
+	estimator.remove_camera("b");
+	CHECK_FALSE(has_row(estimator, "b"));
+	CHECK(row(estimator, "a").samples == 3);
+	CHECK(row(estimator, "a").live_ms == 100);
+	CHECK(row(estimator, "c").samples == 3);
+	CHECK(row(estimator, "c").live_ms == -20);
+}
+
+// The spec's duplicate handling: a repeat cannot add a second sample for the same index.
+TEST_CASE("estimator forms one sample from a repeated video marker")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.add_camera("cam");
+
+	SUBCASE("both after the audio marker")
+	{
+		estimator.on_audio_marker(4, ms(1000));
+		estimator.on_video_marker("cam", 4, ms(1142));
+		estimator.on_video_marker("cam", 4, ms(1150));
+		CHECK(row(estimator, "cam").live_ms == 142);
+	}
+	SUBCASE("both before the audio marker: the nearer pairs")
+	{
+		estimator.on_video_marker("cam", 4, ms(1150));
+		estimator.on_video_marker("cam", 4, ms(1142));
+		estimator.on_audio_marker(4, ms(1000));
+		CHECK(row(estimator, "cam").live_ms == 142);
+	}
+	CHECK(row(estimator, "cam").samples == 1);
+}
+
+TEST_CASE("estimator drops the oldest of more than 256 unpaired video markers")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.add_camera("cam");
+
+	// 257 markers, one a cycle: indexes 0 to 255, then 0 again a wrap after the first.
+	const uint64_t first_ns = ms(100000);
+	for (uint32_t k = 0; k <= 256; k++)
+		estimator.on_video_marker("cam", k % 256, first_ns + k * cycle_ns);
+
+	// The first marker was dropped, and the index 0 left is a wrap away from this audio marker.
+	estimator.on_audio_marker(0, first_ns - ms(100));
+	CHECK(row(estimator, "cam").samples == 0);
+
+	// The second marker is still there.
+	estimator.on_audio_marker(1, first_ns + cycle_ns - ms(100));
+	CHECK(row(estimator, "cam").samples == 1);
+	CHECK(row(estimator, "cam").live_ms == 100);
+}
+
+TEST_CASE("estimator drops the oldest of more than 256 audio markers")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.add_camera("cam");
+
+	const uint64_t first_ns = ms(100000);
+	for (uint32_t k = 0; k <= 256; k++)
+		estimator.on_audio_marker(k % 256, first_ns + k * cycle_ns);
+
+	// The first audio marker was dropped, so the video marker of its flash forms no sample.
+	estimator.on_video_marker("cam", 0, first_ns + ms(100));
+	CHECK(row(estimator, "cam").samples == 0);
+
+	// The second one is still there.
+	estimator.on_video_marker("cam", 1, first_ns + cycle_ns + ms(100));
+	CHECK(row(estimator, "cam").samples == 1);
+	CHECK(row(estimator, "cam").live_ms == 100);
+}
+
+TEST_CASE("estimator reports Looking until the first sample, then Settling with it rounded")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.add_camera("cam");
+
+	CHECK(row(estimator, "cam").state == CameraState::Looking);
+	CHECK(row(estimator, "cam").samples == 0);
+
+	// A video marker alone is no sample.
+	estimator.on_video_marker("cam", 1, ms(5000));
+	CHECK(row(estimator, "cam").state == CameraState::Looking);
+
+	SUBCASE("141.5 ms")
+	{
+		estimator.on_audio_marker(1, ms(5000) - 141500000);
+		CHECK(row(estimator, "cam").live_ms == 142);
+	}
+	SUBCASE("-141.5 ms")
+	{
+		estimator.on_audio_marker(1, ms(5000) + 141500000);
+		CHECK(row(estimator, "cam").live_ms == -142);
+	}
+	CHECK(row(estimator, "cam").state == CameraState::Settling);
+	CHECK(row(estimator, "cam").samples == 1);
+}
+
+TEST_CASE("estimator keeps a camera Settling with its latest sample while its window fills")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.add_camera("cam");
+
+	// Samples 50 ms apart: far more than any frame, so they never agree.
+	const int64_t offsets[] = {100, 150, 200, 250, 300};
+	for (uint32_t k = 0; k < 5; k++) {
+		pair(estimator, "cam", k, ms(10000) + k * cycle_ns, offsets[k]);
+		CAPTURE(k);
+		CHECK(row(estimator, "cam").state == CameraState::Settling);
+		CHECK(row(estimator, "cam").samples == k + 1);
+		CHECK(row(estimator, "cam").live_ms == offsets[k]);
+	}
+}
+
+TEST_CASE("estimator keeps the five most recent samples by video time")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.add_camera("cam");
+
+	const uint64_t first_ns = ms(10000);
+	const int64_t offsets[] = {100, 150, 200, 250, 300};
+	for (uint32_t k = 0; k < 5; k++)
+		pair(estimator, "cam", 10 + k, first_ns + k * cycle_ns, offsets[k]);
+	REQUIRE(row(estimator, "cam").samples == 5);
+	REQUIRE(row(estimator, "cam").live_ms == 300);
+
+	// A sixth sample from a flash before all five is not among the five most recent.
+	pair(estimator, "cam", 9, first_ns - cycle_ns, 50);
+	CHECK(row(estimator, "cam").samples == 5);
+	CHECK(row(estimator, "cam").live_ms == 300);
+
+	// A sample from a later flash pushes out the oldest and is the latest.
+	pair(estimator, "cam", 15, first_ns + 5 * cycle_ns, 350);
+	CHECK(row(estimator, "cam").samples == 5);
+	CHECK(row(estimator, "cam").live_ms == 350);
+}
+
+TEST_CASE("estimator clear returns every camera to Looking and keeps them added")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.add_camera("a");
+	estimator.add_camera("b");
+	pair(estimator, "a", 1, ms(10000), 100);
+	pair(estimator, "b", 1, ms(10000), 40);
+	// Markers still waiting: an audio marker and one of camera a's video markers.
+	estimator.on_audio_marker(2, ms(10000) + cycle_ns);
+	estimator.on_video_marker("a", 3, ms(10000) + 2 * cycle_ns + ms(100));
+
+	estimator.clear();
+
+	REQUIRE(estimator.snapshot().cameras.size() == 2);
+	CHECK(row(estimator, "a").state == CameraState::Looking);
+	CHECK(row(estimator, "a").samples == 0);
+	CHECK(row(estimator, "b").state == CameraState::Looking);
+	CHECK(row(estimator, "b").samples == 0);
+
+	// The waiting markers are gone: their partners form no sample.
+	estimator.on_video_marker("b", 2, ms(10000) + cycle_ns + ms(40));
+	estimator.on_audio_marker(3, ms(10000) + 2 * cycle_ns);
+	CHECK(row(estimator, "a").samples == 0);
+	CHECK(row(estimator, "b").samples == 0);
+
+	// Both cameras are still added.
+	pair(estimator, "a", 4, ms(10000) + 3 * cycle_ns, 100);
+	pair(estimator, "b", 5, ms(10000) + 4 * cycle_ns, 40);
+	CHECK(row(estimator, "a").samples == 1);
+	CHECK(row(estimator, "b").samples == 1);
+}
+
+TEST_CASE("estimator clear_camera clears one camera and keeps it added")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.add_camera("a");
+	estimator.add_camera("b");
+	for (uint32_t k = 0; k < 2; k++) {
+		const uint64_t audio_ns = ms(10000) + k * cycle_ns;
+		estimator.on_audio_marker(k, audio_ns);
+		estimator.on_video_marker("a", k, audio_ns + ms(100));
+		estimator.on_video_marker("b", k, audio_ns + ms(40));
+	}
+	// Each camera has a video marker waiting for its audio marker.
+	estimator.on_video_marker("a", 2, ms(10000) + 2 * cycle_ns + ms(100));
+	estimator.on_video_marker("b", 2, ms(10000) + 2 * cycle_ns + ms(40));
+
+	estimator.clear_camera("a");
+
+	CHECK(row(estimator, "a").state == CameraState::Looking);
+	CHECK(row(estimator, "a").samples == 0);
+	CHECK(row(estimator, "b").state == CameraState::Settling);
+	CHECK(row(estimator, "b").samples == 2);
+	CHECK(row(estimator, "b").live_ms == 40);
+
+	// Camera a's waiting marker is gone and camera b's is not.
+	estimator.on_audio_marker(2, ms(10000) + 2 * cycle_ns);
+	CHECK(row(estimator, "a").samples == 0);
+	CHECK(row(estimator, "b").samples == 3);
+
+	// Camera a is still added.
+	pair(estimator, "a", 3, ms(10000) + 3 * cycle_ns, 100);
+	CHECK(row(estimator, "a").samples == 1);
+	CHECK(row(estimator, "a").live_ms == 100);
+}
+
+TEST_CASE("estimator ignores a video marker of a camera that is not added")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.add_camera("a");
+
+	pair(estimator, "ghost", 1, ms(10000), 100);
+	CHECK_FALSE(has_row(estimator, "ghost"));
+	CHECK(estimator.snapshot().cameras.size() == 1);
+
+	estimator.remove_camera("a");
+	pair(estimator, "a", 2, ms(10000) + cycle_ns, 100);
+	CHECK(estimator.snapshot().cameras.empty());
+}
