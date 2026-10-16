@@ -1,7 +1,8 @@
 #! /bin/sh
 # Regenerates the detector fixtures with Audio Video Sync Dock's generator at the commit the detector derives from.
-# It writes qr-frame.pgm, the sound of ten marker cycles with its indices, and video-cycles/, the frames of the first
-# four marker cycles on the sound's time 0 (generate.py's header describes each).
+# It writes qr-frame.pgm, the sound of ten marker cycles with its indices, video-cycles/, the frames of the first four
+# marker cycles on the sound's time 0, and qr-frame-f9.pgm, a QR frame the detector rejects (generate.py's header
+# describes each).
 # Usage: generate.sh [Sync Dock checkout]
 # Without an argument it clones Sync Dock to a temporary directory. Pillow and qrcode must be importable, for example
 # from "pip install -r tool/requirements.txt" in the checkout. The fixtures are committed, so the tests never run this.

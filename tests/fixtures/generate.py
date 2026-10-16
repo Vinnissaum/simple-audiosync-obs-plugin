@@ -15,6 +15,9 @@ It writes:
   3q = 12 frames: q QR frames, then q frames of each sync image. Each distinct frame is written once as frame-NN.pgm,
   numbered in the order it first appears, and sequence.txt names the 48 frames in order, one per line. The sound of
   each cycle starts at frame 2q of the cycle, where the second sync image replaces the first.
+- qr-frame-f9.pgm: qr-frame.pgm with f=9 in its QR code, below the detector's range of 10 to 32,000, so the detector
+  rejects it. The generator refuses to build a pattern with that f, so the script sets f on a built pattern: only the
+  QR code's text changes.
 '''
 
 import glob
@@ -24,6 +27,7 @@ import sys
 import tempfile
 
 QR_INDEX = 37
+REJECTED_F = 9
 AUDIO_MARKERS = 10
 VIDEO_CYCLES = 4
 
@@ -92,6 +96,13 @@ def main():
 
         # The frames of the first four marker cycles, on the same time 0 as the sound.
         write_video_cycles(videogen, pattern, os.path.join(outdir, 'video-cycles'))
+
+        # The QR frame of index 37 again, with an f the detector rejects.
+        rejected = videogen.Pattern(ctx, 'q=4,f=884,c=2')
+        rejected.f = REJECTED_F
+        rejected.i = QR_INDEX
+        with videogen.Image.open(rejected.video_frames()[0]) as image:
+            write_pgm(image, os.path.join(outdir, 'qr-frame-f9.pgm'))
 
         ctx.remove_image_files()
 

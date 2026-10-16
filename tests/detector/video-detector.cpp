@@ -1,19 +1,24 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include <doctest/doctest.h>
 
+#include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "detector/qr-payload.hpp"
 #include "detector/video-detector.hpp"
 #include "support/fixtures.hpp"
+#include "support/pattern-timeline.hpp"
 
 using camera_sync::LogLevel;
 using camera_sync::LumaFormat;
 using camera_sync::QrPayload;
 using camera_sync::VideoDetector;
 using camera_sync::VideoFrame;
+using camera_sync::VideoMarker;
 
 // qr-frame.pgm is one frame of Sync Dock's pattern q=4,f=884,c=2 at 60 fps, 320x180, from the marker cycle with index
 // 37. Its QR code carries q=66,i=37,f=884,c=2,t=0,I=256 (q is the 4 frames of the QR code in ms, rounded down).
@@ -172,4 +177,85 @@ TEST_CASE("qr payload logs a rejected value at debug level")
 		// One line, at debug level: nothing at Warning or Error.
 		CHECK(levels == std::vector<LogLevel>{LogLevel::Debug});
 	}
+}
+
+namespace {
+
+constexpr uint64_t one_s = 1000000000;
+constexpr uint32_t qr_frames = pattern_cycle_frames / 3; // q
+
+using LogLines = std::vector<std::pair<LogLevel, std::string>>;
+
+// qr-frame-f9.pgm is qr-frame.pgm with f=9 in its QR code (q=66,i=37,f=9,c=2,t=0,I=256), below f's range of 10 to
+// 32,000. It is shown where a marker cycle's QR frames go, with the cycle's flash after it.
+struct RejectedQrCode {
+	PatternTimeline timeline = read_pattern_timeline(0);
+	Pgm rejected = read_pgm("qr-frame-f9.pgm");
+	LogLines logged;
+	std::vector<VideoMarker> markers;
+	VideoDetector detector;
+
+	RejectedQrCode()
+		: detector([this](LogLevel level, const std::string &message) { logged.emplace_back(level, message); },
+			   [this](const VideoMarker &marker) { markers.push_back(marker); })
+	{
+		REQUIRE(rejected.width == 320);
+		REQUIRE(rejected.height == 180);
+		REQUIRE(detector.start(rejected.width, rejected.height, LumaFormat::Luma8));
+	}
+
+	// Frame k of video-cycles/, at its own time.
+	void show(size_t k)
+	{
+		const Pgm &frame = timeline.frames[timeline.sequence[k].frame];
+		detector.process(VideoFrame{frame.luma.data(), frame.width, timeline.sequence[k].timestamp});
+	}
+
+	// One marker cycle at 60 fps from start_ns: q frames of the rejected QR code, then the flash of cycle 0, q frames of
+	// each sync image.
+	void show_rejected_cycle(uint64_t start_ns)
+	{
+		for (uint32_t k = 0; k < pattern_cycle_frames; k++) {
+			const Pgm &frame = k < qr_frames ? rejected : timeline.frames[timeline.sequence[k].frame];
+			detector.process(VideoFrame{frame.luma.data(), frame.width, pattern_frame_ns(start_ns, k)});
+		}
+	}
+};
+
+} // namespace
+
+TEST_CASE("video detector emits no marker for a rejected qr code on a fresh detector")
+{
+	RejectedQrCode shown;
+	shown.show_rejected_cycle(0);
+
+	// READ-23: each of the q QR frames is read, rejected and logged at debug level, the flash emits no marker, and the
+	// detector still has no payload.
+	CHECK(shown.logged == LogLines(qr_frames, {LogLevel::Debug, "f: out of range: 9"}));
+	CHECK(shown.markers.empty());
+	CHECK_FALSE(shown.detector.qr_data().valid);
+}
+
+TEST_CASE("video detector emits no marker for a rejected qr code after a valid marker cycle")
+{
+	RejectedQrCode shown;
+	for (size_t k = 0; k < pattern_cycle_frames; k++)
+		shown.show(k);
+	// Cycle 0: its QR code carries index 0, and its flash is one marker.
+	REQUIRE(shown.markers.size() == 1);
+	REQUIRE(shown.markers[0].qr_data.index == 0);
+	REQUIRE(shown.logged.empty());
+
+	// Cycle 0's window for a flash closes 3q after its last QR frame, at 248 ms. The detector keeps index 0 as its last
+	// valid payload, so the rejected QR code at 1 s must not open a new window for it.
+	shown.show_rejected_cycle(one_s);
+
+	// READ-23: logged at debug level, no marker, and the last valid payload is still cycle 0's. f and the index are the
+	// two values the rejected QR code carries differently.
+	CHECK(shown.logged == LogLines(qr_frames, {LogLevel::Debug, "f: out of range: 9"}));
+	CHECK(shown.markers.size() == 1);
+	const QrPayload &payload = shown.detector.qr_data();
+	CHECK(payload.valid);
+	CHECK(payload.f == 884);
+	CHECK(payload.index == 0);
 }

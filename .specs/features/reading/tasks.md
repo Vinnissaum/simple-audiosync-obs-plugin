@@ -144,7 +144,7 @@ T35 → T37
 - [x] A payload with a malformed key (`ff=1`, `=1`) returns false with no state change. It also logs `payload: malformed parameter` at Debug, without the payload's text (READ-23, READ-89).
 - [x] A valid payload still decodes to the same values as before (`tests/detector/video-detector.cpp` existing cases pass).
 - [x] The existing "rejects a value out of range and logs which one" case now expects `LogLevel::Debug`, and a new case asserts a rejected payload logs nothing at Warning.
-- [x] Added doctest cases: "qr payload keeps a valid payload when a later one is rejected" (one section per rejected value above), "qr payload logs a rejected value at debug level". No existing case is deleted or loosened.
+- [x] Added doctest cases: "qr payload keeps a valid payload when a later one is rejected" (one section per rejected value above), "qr payload logs a rejected value at debug level". No existing case is deleted or loosened. Follow-up (Verifier gap 1, mutant M51): two detector cases show `qr-frame-f9.pgm`, a QR frame with f=9 that `generate.py` now writes, followed by a flash. Neither a fresh detector nor one past a valid cycle's window emits a marker. In the second case only the `continue` after a rejected decode keeps the kept index from opening a new window. Test count: 160.
 - [x] Quick gate passes. Test count: ran 26, which is 24 plus 2.
 
 **Tests**: unit
