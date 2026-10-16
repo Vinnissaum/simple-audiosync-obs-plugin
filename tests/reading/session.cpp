@@ -1050,3 +1050,211 @@ TEST_CASE("session reports no pattern sound for a mic that was heard and then mu
 	CHECK_FALSE(no_sound_at(h, 5199));
 	CHECK(no_sound_at(h, 5200));
 }
+
+namespace {
+
+// The camera's tap delivers one grey frame, with no pattern in it, as the clock reads ms.
+void deliver_frame(Harness &h, const SourceId &camera, uint64_t ms)
+{
+	static const std::vector<uint8_t> grey(320 * 180, 127);
+	h.clock.now = ms * one_ms;
+	REQUIRE(h.factory.frame_sinks.count(camera) == 1);
+	h.factory.frame_sinks[camera]->on_frame(camera_sync::VideoFrame{grey.data(), 320, ms * one_ms}, 320, 180,
+						camera_sync::LumaFormat::Luma8);
+}
+
+void tick_at(Harness &h, uint64_t ms)
+{
+	h.clock.now = ms * one_ms;
+	h.session.tick();
+}
+
+// Cam A Stable at +100 ms and cam B Settling at +40 ms.
+void read_both(Harness &h)
+{
+	for (uint32_t i = 0; i < 5; i++)
+		h.sample("cam-a", 20 + i, one_s + i * 200 * one_ms, 100 * one_ms);
+	h.sample("cam-b", 20, one_s, 40 * one_ms);
+	REQUIRE(h.row("cam-a").state == CameraState::Stable);
+	REQUIRE(h.row("cam-b").state == CameraState::Settling);
+}
+
+} // namespace
+
+TEST_CASE("session drops a removed camera's tap and reading and unticks it")
+{
+	Harness h;
+	start_measuring(h);
+	read_both(h);
+
+	std::multiset<std::string> live;
+	SUBCASE("while measuring")
+	{
+		live = {"mic:mic", "camera:cam-b"};
+	}
+	SUBCASE("while stopped")
+	{
+		h.session.stop();
+	}
+
+	// READ-55: cam A is no longer ticked; cam B keeps its tap and reading.
+	h.session.on_camera_removed("cam-a");
+	CHECK_FALSE(h.has_row("cam-a"));
+	CHECK(h.factory.live == live);
+	CHECK(h.factory.requests.size() == 3);
+	CHECK(h.row("cam-b").state == CameraState::Settling);
+	CHECK(h.row("cam-b").live_ms == 40);
+}
+
+TEST_CASE("session keeps the pattern when the camera that brought it is removed")
+{
+	Harness h;
+	start_measuring(h);
+	h.sample("cam-a", 0, one_s, 100 * one_ms);
+
+	// Edge case: cam B still measures against the pattern cam A brought, until Reset.
+	h.session.on_camera_removed("cam-a");
+	h.sample("cam-b", 1, 2 * one_s, 40 * one_ms, PatternParams{1000, 2, 66, 256});
+	CHECK(h.row("cam-b").state == CameraState::Looking);
+	h.sample("cam-b", 2, 3 * one_s, 40 * one_ms);
+	CHECK(h.row("cam-b").state == CameraState::Settling);
+	CHECK(h.row("cam-b").live_ms == 40);
+}
+
+TEST_CASE("session drops a renamed camera's tap and reading and unticks it")
+{
+	Harness h;
+	start_measuring(h);
+	read_both(h);
+
+	// READ-56
+	h.session.on_camera_renamed("cam-a");
+	CHECK_FALSE(h.has_row("cam-a"));
+	CHECK(h.factory.live == std::multiset<std::string>{"mic:mic", "camera:cam-b"});
+	CHECK(h.row("cam-b").state == CameraState::Settling);
+	CHECK(h.row("cam-b").live_ms == 40);
+
+	// Ticked again under its new name, it starts over.
+	h.session.set_selection({"cam-a", "cam-b"}, "mic");
+	CHECK(h.row("cam-a").state == CameraState::Looking);
+	CHECK(h.row("cam-a").samples == 0);
+}
+
+TEST_CASE("session drops a camera that delivers no frame for 2 s")
+{
+	Harness h;
+	start_measuring(h);
+	h.sample("cam-a", 0, 0, 100 * one_ms);
+	deliver_frame(h, "cam-b", 1000);
+	deliver_frame(h, "cam-b", 1900);
+
+	// READ-57: cam A's tap has delivered nothing since it was made at t = 0.
+	tick_at(h, 1999);
+	CHECK(h.has_row("cam-a"));
+	CHECK(h.factory.live == std::multiset<std::string>{"mic:mic", "camera:cam-a", "camera:cam-b"});
+	tick_at(h, 2000);
+	CHECK_FALSE(h.has_row("cam-a"));
+	CHECK(h.factory.live == std::multiset<std::string>{"mic:mic", "camera:cam-b"});
+
+	// Cam B's last frame was at 1.9 s.
+	CHECK(h.has_row("cam-b"));
+	tick_at(h, 3899);
+	CHECK(h.has_row("cam-b"));
+	tick_at(h, 3900);
+	CHECK_FALSE(h.has_row("cam-b"));
+	CHECK(h.factory.live == std::multiset<std::string>{"mic:mic"});
+	CHECK(h.snap().state == SessionState::Measuring);
+}
+
+TEST_CASE("session keeps a camera that delivers frames without the pattern")
+{
+	Harness h;
+	start_measuring(h);
+
+	// READ-57: frames flow, so the camera is measured, Looking, however long it sees no pattern.
+	for (uint64_t ms = 0; ms <= 10000; ms += 100) {
+		if (ms % 500 == 0)
+			deliver_frame(h, "cam-b", ms);
+		tick_at(h, ms);
+	}
+	CHECK(h.has_row("cam-b"));
+	CHECK(h.row("cam-b").state == CameraState::Looking);
+	CHECK(h.factory.live.count("camera:cam-b") == 1);
+}
+
+TEST_CASE("session tick changes nothing while stopped or idle")
+{
+	Harness h;
+	SessionState state = SessionState::Idle;
+	SUBCASE("idle")
+	{
+		h.session.set_selection({"cam-a", "cam-b"}, "mic");
+	}
+	SUBCASE("stopped")
+	{
+		start_measuring(h);
+		h.sample("cam-a", 0, one_s, 100 * one_ms);
+		h.session.stop();
+		state = SessionState::Stopped;
+	}
+
+	tick_at(h, 10000);
+	CHECK(h.snap().state == state);
+	CHECK(h.has_row("cam-a"));
+	CHECK(h.has_row("cam-b"));
+	if (state == SessionState::Stopped)
+		CHECK(h.row("cam-a").live_ms == 100);
+}
+
+TEST_CASE("session clears a camera's reading when its filters change")
+{
+	Harness h;
+	start_measuring(h);
+	read_both(h);
+
+	std::multiset<std::string> live;
+	SUBCASE("while measuring")
+	{
+		live = {"mic:mic", "camera:cam-a", "camera:cam-b"};
+	}
+	SUBCASE("while stopped")
+	{
+		h.session.stop();
+	}
+
+	// READ-58: cam A is Looking again and still ticked, with its tap; cam B keeps its reading.
+	h.session.on_camera_filters_changed("cam-a");
+	CHECK(h.row("cam-a").state == CameraState::Looking);
+	CHECK(h.row("cam-a").samples == 0);
+	CHECK(h.factory.live == live);
+	CHECK(h.row("cam-b").state == CameraState::Settling);
+	CHECK(h.row("cam-b").live_ms == 40);
+}
+
+TEST_CASE("session clears every reading when the mic's sync offset changes and keeps the pattern")
+{
+	Harness h;
+	start_measuring(h);
+	read_both(h);
+	h.session.on_audio_marker(Harness::audio(40, 5 * one_s));
+
+	// READ-59: every camera Looking; measuring goes on with every tap.
+	h.session.on_mic_sync_offset_changed();
+	CHECK(h.snap().state == SessionState::Measuring);
+	CHECK(h.factory.live == std::multiset<std::string>{"mic:mic", "camera:cam-a", "camera:cam-b"});
+	CHECK(h.row("cam-a").state == CameraState::Looking);
+	CHECK(h.row("cam-a").samples == 0);
+	CHECK(h.row("cam-b").state == CameraState::Looking);
+	CHECK(h.row("cam-b").samples == 0);
+
+	// An audio marker stamped with the old offset forms no sample.
+	h.session.on_video_marker("cam-a", Harness::video(40, 5 * one_s + 100 * one_ms));
+	CHECK(h.row("cam-a").state == CameraState::Looking);
+
+	// The pattern stays: another one is still ignored, the session's own is read.
+	h.sample("cam-b", 41, 6 * one_s, 30 * one_ms, PatternParams{1000, 2, 66, 256});
+	CHECK(h.row("cam-b").state == CameraState::Looking);
+	h.sample("cam-b", 42, 7 * one_s, 30 * one_ms);
+	CHECK(h.row("cam-b").state == CameraState::Settling);
+	CHECK(h.row("cam-b").live_ms == 30);
+}

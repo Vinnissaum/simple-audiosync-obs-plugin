@@ -94,6 +94,17 @@ public:
 
 	// The chosen mic left OBS: every tap, reading and the pattern go, and the session is Idle.
 	void on_mic_removed();
+	// A ticked camera left OBS or was renamed: its tap and reading go, and it is no longer ticked.
+	void on_camera_removed(const SourceId &camera);
+	void on_camera_renamed(const SourceId &camera);
+	// A filter was added to or removed from a ticked camera: its reading no longer holds.
+	void on_camera_filters_changed(const SourceId &camera);
+	// The mic's Sync Offset changed: no reading holds.
+	void on_mic_sync_offset_changed();
+
+	// Called on the UI thread about ten times a second. While measuring, a ticked camera whose tap delivered no frame
+	// for 2 s is dropped as on_camera_removed drops it.
+	void tick();
 
 	// A camera's pipeline saw a flash of the pattern, or the mic's heard one. They are read only while measuring.
 	void on_video_marker(const SourceId &camera, const VideoMarker &marker);
@@ -122,6 +133,7 @@ private:
 	bool tap_mic();
 	void tap_camera(const SourceId &camera);
 	void drop_camera(const SourceId &camera, Released &released);
+	void untick(const SourceId &camera, Released &released);
 	void release_taps(Released &released);
 	void restart_no_sound_wait();
 	bool no_pattern_sound(uint64_t now) const;

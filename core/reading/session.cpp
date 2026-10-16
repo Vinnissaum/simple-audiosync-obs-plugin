@@ -14,6 +14,9 @@ namespace {
 // before the dock is told.
 constexpr uint64_t no_sound_ns = 5000000000;
 
+// How long a ticked camera's tap may deliver no frame while measuring before the camera is taken as deactivated.
+constexpr uint64_t no_frames_ns = 2000000000;
+
 } // namespace
 
 Session::Session(TapFactory &factory, Clock clock, Logger log, NameOf name_of)
@@ -148,6 +151,50 @@ void Session::on_mic_removed()
 	state_ = SessionState::Idle;
 }
 
+void Session::on_camera_removed(const SourceId &camera)
+{
+	Released released; // destroyed after the lock below is released
+	std::lock_guard<std::mutex> lock(mutex_);
+	untick(camera, released);
+}
+
+void Session::on_camera_renamed(const SourceId &camera)
+{
+	Released released; // destroyed after the lock below is released
+	std::lock_guard<std::mutex> lock(mutex_);
+	untick(camera, released);
+}
+
+void Session::on_camera_filters_changed(const SourceId &camera)
+{
+	std::lock_guard<std::mutex> lock(mutex_);
+	estimator_.clear_camera(camera);
+}
+
+void Session::on_mic_sync_offset_changed()
+{
+	// Every audio marker went with the readings: each was stamped with the old offset. The pattern stays.
+	std::lock_guard<std::mutex> lock(mutex_);
+	estimator_.clear();
+}
+
+void Session::tick()
+{
+	Released released; // destroyed after the lock below is released
+	std::lock_guard<std::mutex> lock(mutex_);
+	if (state_ != SessionState::Measuring)
+		return;
+
+	// A tap's thread may stamp a frame after the clock is read here, so the comparison adds rather than subtracts.
+	const uint64_t now = clock_();
+	std::vector<SourceId> silent;
+	for (const auto &entry : camera_taps_)
+		if (entry.second.pipeline->last_frame_ns() + no_frames_ns <= now)
+			silent.push_back(entry.first);
+	for (const SourceId &camera : silent)
+		untick(camera, released);
+}
+
 void Session::on_video_marker(const SourceId &camera, const VideoMarker &marker)
 {
 	std::lock_guard<std::mutex> lock(mutex_);
@@ -251,6 +298,16 @@ bool Session::no_pattern_sound(uint64_t now) const
 {
 	return state_ == SessionState::Measuring && unanswered_since_ && now - *unanswered_since_ >= no_sound_ns &&
 	       now - last_video_ns_ < no_sound_ns;
+}
+
+// A camera leaves the selection, with its tap and reading.
+void Session::untick(const SourceId &camera, Released &released)
+{
+	auto found = std::find(cameras_.begin(), cameras_.end(), camera);
+	if (found == cameras_.end())
+		return;
+	cameras_.erase(found);
+	drop_camera(camera, released);
 }
 
 void Session::release_taps(Released &released)
