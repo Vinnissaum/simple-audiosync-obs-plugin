@@ -102,16 +102,46 @@ TEST_CASE("qr payload keeps a valid payload when a later one is rejected")
 
 	// Each rejected payload sets every other field to a value of its own, so a payload that is not kept whole shows it.
 	std::string rejected;
-	SUBCASE("f=9") { rejected = "q=50,i=12,f=9,c=3,t=1,I=128"; }
-	SUBCASE("f=32001") { rejected = "q=50,i=12,f=32001,c=3,t=1,I=128"; }
-	SUBCASE("c=0") { rejected = "q=50,i=12,f=500,c=0,t=1,I=128"; }
-	SUBCASE("c above f") { rejected = "q=50,i=12,f=500,c=501,t=1,I=128"; }
-	SUBCASE("q=0") { rejected = "q=0,i=12,f=500,c=3,t=1,I=128"; }
-	SUBCASE("q=1001") { rejected = "q=1001,i=12,f=500,c=3,t=1,I=128"; }
-	SUBCASE("i=256") { rejected = "q=50,i=256,f=500,c=3,t=1,I=128"; }
-	SUBCASE("no i") { rejected = "q=50,f=500,c=3,t=1,I=128"; }
-	SUBCASE("malformed key ff=1") { rejected = "q=50,i=12,f=500,c=3,t=1,I=128,ff=1"; }
-	SUBCASE("malformed key =1") { rejected = "q=50,i=12,f=500,c=3,t=1,I=128,=1"; }
+	SUBCASE("f=9")
+	{
+		rejected = "q=50,i=12,f=9,c=3,t=1,I=128";
+	}
+	SUBCASE("f=32001")
+	{
+		rejected = "q=50,i=12,f=32001,c=3,t=1,I=128";
+	}
+	SUBCASE("c=0")
+	{
+		rejected = "q=50,i=12,f=500,c=0,t=1,I=128";
+	}
+	SUBCASE("c above f")
+	{
+		rejected = "q=50,i=12,f=500,c=501,t=1,I=128";
+	}
+	SUBCASE("q=0")
+	{
+		rejected = "q=0,i=12,f=500,c=3,t=1,I=128";
+	}
+	SUBCASE("q=1001")
+	{
+		rejected = "q=1001,i=12,f=500,c=3,t=1,I=128";
+	}
+	SUBCASE("i=256")
+	{
+		rejected = "q=50,i=256,f=500,c=3,t=1,I=128";
+	}
+	SUBCASE("no i")
+	{
+		rejected = "q=50,f=500,c=3,t=1,I=128";
+	}
+	SUBCASE("malformed key ff=1")
+	{
+		rejected = "q=50,i=12,f=500,c=3,t=1,I=128,ff=1";
+	}
+	SUBCASE("malformed key =1")
+	{
+		rejected = "q=50,i=12,f=500,c=3,t=1,I=128,=1";
+	}
 
 	CAPTURE(rejected);
 	CHECK_FALSE(payload.decode(rejected.data(), nullptr));
@@ -127,8 +157,8 @@ TEST_CASE("qr payload keeps a valid payload when a later one is rejected")
 TEST_CASE("qr payload logs a rejected value at debug level")
 {
 	const char *const rejected[] = {
-		"q=66,i=37,f=9,c=2",    "q=66,i=37,f=32001,c=2", "q=66,i=37,f=884,c=0",       "q=66,i=37,f=884,c=885",
-		"q=0,i=37,f=884,c=2",   "q=1001,i=37,f=884,c=2", "q=66,i=256,f=884,c=2",      "q=66,f=884,c=2",
+		"q=66,i=37,f=9,c=2",    "q=66,i=37,f=32001,c=2", "q=66,i=37,f=884,c=0",  "q=66,i=37,f=884,c=885",
+		"q=0,i=37,f=884,c=2",   "q=1001,i=37,f=884,c=2", "q=66,i=256,f=884,c=2", "q=66,f=884,c=2",
 		"q=66,i=37,f=884,ff=1", "q=66,i=37,f=884,=1",
 	};
 

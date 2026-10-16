@@ -192,7 +192,9 @@ std::optional<int64_t> ReadingEstimator::add_sample(Camera &camera, uint64_t vid
 	// Inserted by video time, and the oldest leaves a full window, so a sample older than all five is the one that
 	// leaves.
 	std::vector<Sample> &window = camera.window;
-	const auto earlier = [](uint64_t time, const Sample &other) { return time < other.video_ns; };
+	const auto earlier = [](uint64_t time, const Sample &other) {
+		return time < other.video_ns;
+	};
 	window.insert(std::upper_bound(window.begin(), window.end(), video_ns, earlier), Sample{video_ns, ms});
 	if (window.size() > window_size)
 		window.erase(window.begin());

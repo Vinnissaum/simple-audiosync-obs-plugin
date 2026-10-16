@@ -17,7 +17,7 @@ namespace camera_sync {
 struct CameraRow {
 	SourceId id;
 	CameraState state = CameraState::Looking;
-	int64_t live_ms = 0;    // the latest sample by video time, rounded; valid when state is not Looking
+	int64_t live_ms = 0;         // the latest sample by video time, rounded; valid when state is not Looking
 	int64_t reading_ms = 0;      // valid when state is Stable
 	uint32_t samples = 0;        // samples in the window, at most five
 	uint32_t samples_formed = 0; // every sample formed since the camera was added or cleared
