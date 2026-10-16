@@ -106,19 +106,25 @@ public:
 	// for 2 s is dropped as on_camera_removed drops it.
 	void tick();
 
-	// A camera's pipeline saw a flash of the pattern, or the mic's heard one. They are read only while measuring.
+	// A camera's pipeline saw a flash of the pattern, or the mic's heard one. They are read only while measuring, a
+	// camera's only while it has a tap.
 	void on_video_marker(const SourceId &camera, const VideoMarker &marker);
 	void on_audio_marker(const AudioMarker &marker);
 
 	SessionSnapshot snapshot() const;
 
 private:
+	// A source's name is read when its tap is made, on the UI thread, for the lines its markers log on the tap's.
 	struct TappedCamera {
+		std::string name;
 		std::unique_ptr<CameraPipeline> pipeline;
 		std::unique_ptr<Tap> tap; // declared after the pipeline it delivers to, so it is destroyed first
+		uint64_t skipped_logged = 0;
+		std::optional<uint64_t> skipped_logged_ns;
 	};
 
 	struct TappedMic {
+		std::string name;
 		std::unique_ptr<MicPipeline> pipeline;
 		std::unique_ptr<Tap> tap; // declared after the pipeline it delivers to, so it is destroyed first
 	};

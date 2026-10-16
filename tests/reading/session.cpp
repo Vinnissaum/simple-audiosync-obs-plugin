@@ -9,6 +9,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <regex>
 #include <set>
 #include <string>
 #include <thread>
@@ -80,7 +81,7 @@ struct FakeFactory;
 struct FakeTap : Tap {
 	FakeTap(FakeFactory &factory, std::string name) : factory(factory), name(std::move(name)) {}
 	~FakeTap() override;
-	uint64_t skipped_frames() const override { return 0; }
+	uint64_t skipped_frames() const override;
 
 	FakeFactory &factory;
 	std::string name;
@@ -93,6 +94,7 @@ struct FakeFactory : TapFactory {
 	std::set<SourceId> refuse;         // the sources whose tap cannot be made
 	std::map<SourceId, FrameSink *> frame_sinks;
 	AudioSink *audio_sink = nullptr;
+	std::map<std::string, uint64_t> skipped; // by tap name: the frames each tap reports it skipped
 
 	// While set, each tap's destructor checks that the session's lock is free.
 	Session *session = nullptr;
@@ -126,6 +128,12 @@ struct FakeFactory : TapFactory {
 
 	uint32_t mic_sample_rate() override { return 48000; }
 };
+
+uint64_t FakeTap::skipped_frames() const
+{
+	auto found = factory.skipped.find(name);
+	return found == factory.skipped.end() ? 0 : found->second;
+}
 
 FakeTap::~FakeTap()
 {
@@ -1257,4 +1265,221 @@ TEST_CASE("session clears every reading when the mic's sync offset changes and k
 	h.sample("cam-b", 42, 7 * one_s, 30 * one_ms);
 	CHECK(h.row("cam-b").state == CameraState::Settling);
 	CHECK(h.row("cam-b").live_ms == 30);
+}
+
+namespace {
+
+std::vector<std::string> lines_at(const Harness &h, LogLevel level, const std::string &prefix)
+{
+	std::vector<std::string> found;
+	for (const std::string &line : h.log.at(level))
+		if (line.rfind(prefix, 0) == 0)
+			found.push_back(line);
+	return found;
+}
+
+} // namespace
+
+TEST_CASE("session logs measure.start with the ticked cameras, the mic and the canvas rate")
+{
+	Harness h;
+	h.factory.refuse = {"mic"};
+	h.session.set_selection({"cam-a", "cam-b", "cam-c"}, "mic");
+
+	// A Start that measures nothing logs no start.
+	REQUIRE(h.session.start({60000, 1001}) == StartResult::MicTapFailed);
+	CHECK(h.log.at(LogLevel::Info).empty());
+
+	// READ-84
+	h.factory.refuse.clear();
+	REQUIRE(h.session.start({60000, 1001}) == StartResult::Started);
+	CHECK(h.log.at(LogLevel::Info) ==
+	      std::vector<std::string>{"measure.start cameras=3 mic=\"Shure MV7\" canvas_fps=59.94"});
+}
+
+TEST_CASE("session logs measure.stop and measure.reset when they apply")
+{
+	Harness h;
+	h.session.set_selection({"cam-a"}, "mic");
+	h.session.stop();
+	h.session.reset();
+	REQUIRE(h.session.start({30, 1}) == StartResult::Started);
+	h.session.reset();
+	h.session.stop();
+	h.session.stop();
+	h.session.reset();
+
+	// READ-85: a Reset while measuring and one while stopped, one Stop; Stop and Reset in Idle and a second Stop log
+	// nothing.
+	CHECK(h.log.at(LogLevel::Info) ==
+	      std::vector<std::string>{"measure.start cameras=1 mic=\"Shure MV7\" canvas_fps=30", "measure.reset",
+				       "measure.stop", "measure.reset"});
+}
+
+TEST_CASE("session logs reading.stable when a camera becomes stable or its reading changes")
+{
+	Harness h;
+	h.session.set_selection({"cam-a", "cam-b"}, "mic");
+	REQUIRE(h.session.start({60, 1}) == StartResult::Started);
+
+	// A camera reads the pattern first, so the mic's markers are taken.
+	h.session.on_video_marker("cam-a", Harness::video(200, 0));
+
+	// Cam A: each video marker completes its pair, so the estimator answers the video marker.
+	uint32_t index = 0;
+	for (int64_t offset_ms : {99, 100, 100, 101, 101}) {
+		h.session.on_audio_marker(Harness::audio(index, one_s + index * 200 * one_ms));
+		h.session.on_video_marker("cam-a",
+					  Harness::video(index, one_s + index * 200 * one_ms + offset_ms * one_ms));
+		index++;
+	}
+	// Cam B: each audio marker completes its pair, so the estimator answers the audio marker.
+	for (int64_t offset_ms : {-60, -60, -61, -59, -60}) {
+		h.sample("cam-b", index, one_s + index * 200 * one_ms, offset_ms * static_cast<int64_t>(one_ms));
+		index++;
+	}
+	// Cam A moves to +130: one line once its window agrees again, none while it stays there.
+	for (int i = 0; i < 6; i++) {
+		h.sample("cam-a", index, one_s + index * 200 * one_ms, 130 * one_ms);
+		index++;
+	}
+
+	// READ-86: the spread is the window's largest sample minus its smallest.
+	CHECK(lines_at(h, LogLevel::Info, "reading.stable") ==
+	      std::vector<std::string>{"reading.stable camera=\"Cam A\" reading_ms=+100 spread_ms=2",
+				       "reading.stable camera=\"Cam B\" reading_ms=-60 spread_ms=2",
+				       "reading.stable camera=\"Cam A\" reading_ms=+130 spread_ms=0"});
+}
+
+TEST_CASE("session logs every marker at debug level with its source, index, time and pattern")
+{
+	Harness h;
+	h.session.set_selection({"cam-a", "cam-b"}, "mic");
+	REQUIRE(h.session.start({30, 1}) == StartResult::Started);
+
+	h.session.on_video_marker("cam-a", Harness::video(3, 1100 * one_ms));
+	h.session.on_audio_marker(Harness::audio(3, 1000 * one_ms));
+	h.session.on_video_marker("cam-b", Harness::video(4, 1300 * one_ms, PatternParams{1000, 2, 66, 256}));
+	h.session.reset();
+	h.session.on_audio_marker(Harness::audio(5, 1400 * one_ms));
+
+	// READ-87: the markers read, the one of another pattern, and the one heard with no pattern to listen for.
+	CHECK(lines_at(h, LogLevel::Debug, "marker.") ==
+	      std::vector<std::string>{
+		      "marker.video camera=\"Cam A\" index=3 time_ns=1100000000 f=884 c=2 q_ms=66 index_max=256",
+		      "marker.audio mic=\"Shure MV7\" index=3 time_ns=1000000000",
+		      "marker.ignored camera=\"Cam B\" index=4 time_ns=1300000000 f=1000 c=2 q_ms=66 index_max=256",
+		      "marker.ignored mic=\"Shure MV7\" index=5 time_ns=1400000000"});
+
+	// A rejected payload is logged at debug level by the camera's detector ("qr payload logs a rejected value at
+	// debug level" in tests/detector/video-detector.cpp) through the logger the session gives each pipeline, which
+	// is the session's: the pipeline's own warning arrives in it.
+	REQUIRE(h.factory.frame_sinks.count("cam-a") == 1);
+	h.factory.frame_sinks["cam-a"]->on_frame(camera_sync::VideoFrame{nullptr, 320, 0}, 320, 180,
+						 camera_sync::LumaFormat::Luma8);
+	CHECK(h.log.at(LogLevel::Warning) ==
+	      std::vector<std::string>{"camera frame dropped: width=320 height=180 no data"});
+}
+
+TEST_CASE("session logs a camera's skipped frames at debug level at most once per 5 s")
+{
+	Harness h;
+	start_measuring(h);
+
+	// Both cameras deliver frames, so neither is dropped; only cam A skips any.
+	const auto at = [&h](uint64_t ms) {
+		deliver_frame(h, "cam-a", ms);
+		deliver_frame(h, "cam-b", ms);
+		tick_at(h, ms);
+	};
+	h.factory.skipped["camera:cam-a"] = 3;
+	at(1000);
+	h.factory.skipped["camera:cam-a"] = 5;
+	at(2000);
+	h.factory.skipped["camera:cam-a"] = 7;
+	at(4000);
+	at(5999);
+	at(6000);
+	at(11000);
+	at(12000);
+
+	// READ-87: the first count at once, the count 5 s after it, and nothing once the count stops growing.
+	CHECK(lines_at(h, LogLevel::Debug, "frames.") ==
+	      std::vector<std::string>{"frames.skipped camera=\"Cam A\" skipped=3",
+				       "frames.skipped camera=\"Cam A\" skipped=7"});
+}
+
+TEST_CASE("session logs only the allowed formats at info and warning level, naming only the sources it was given")
+{
+	Harness h;
+	h.names["cam-b"] = "Desk \"Cam\" \\ 2";
+	h.factory.refuse = {"cam-c"};
+	h.session.set_selection({"cam-a", "cam-b", "cam-c"}, "mic");
+	REQUIRE(h.session.start({60000, 1001}) == StartResult::Started);
+	for (uint32_t i = 0; i < 5; i++) {
+		h.sample("cam-a", i, one_s + i * 200 * one_ms, 100 * one_ms);
+		h.session.on_audio_marker(Harness::audio(10 + i, 2 * one_s + i * 200 * one_ms));
+		h.session.on_video_marker("cam-b", Harness::video(10 + i, 2 * one_s + i * 200 * one_ms + 40 * one_ms));
+	}
+	h.sample("cam-b", 30, 4 * one_s, 10 * one_ms, PatternParams{1000, 2, 66, 256});
+	h.factory.frame_sinks["cam-a"]->on_frame(camera_sync::VideoFrame{nullptr, 0, 0}, 0, 0,
+						 camera_sync::LumaFormat::Luma8);
+	h.factory.skipped["camera:cam-a"] = 2;
+	deliver_frame(h, "cam-a", 500);
+	deliver_frame(h, "cam-b", 500);
+	tick_at(h, 500);
+	h.session.stop();
+	h.session.reset();
+	h.factory.refuse.insert("mic-2");
+	h.session.set_selection({"cam-a", "cam-b", "cam-c"}, "mic-2");
+	REQUIRE(h.session.start({60000, 1001}) == StartResult::MicTapFailed);
+	h.session.collection_changing();
+
+	// READ-89: every Info and Warning line is one of these formats, and each format was written.
+	const std::string name = R"("(?:[^"\\]|\\.)*")";
+	const std::vector<std::regex> allowed = {
+		std::regex("measure\\.start cameras=[0-9]+ mic=" + name + " canvas_fps=[0-9]+(\\.[0-9]{1,2})?"),
+		std::regex("measure\\.stop"),
+		std::regex("measure\\.reset"),
+		std::regex("reading\\.stable camera=" + name + " reading_ms=[+-]?[0-9]+ spread_ms=[0-9]+"),
+		std::regex("tap\\.failed (camera|mic)=" + name),
+		std::regex("camera frame dropped: width=[0-9]+ height=[0-9]+( no data)?"),
+	};
+	std::vector<int> written(allowed.size(), 0);
+	for (const auto &line : h.log.lines) {
+		if (line.first != LogLevel::Info && line.first != LogLevel::Warning)
+			continue;
+		bool matched = false;
+		for (size_t i = 0; i < allowed.size(); i++)
+			if (std::regex_match(line.second, allowed[i])) {
+				matched = true;
+				written[i]++;
+			}
+		CHECK_MESSAGE(matched, line.second);
+	}
+	CHECK(written == std::vector<int>{1, 1, 1, 2, 2, 1});
+
+	// No line, at any level, names a source the session was not given.
+	std::set<std::string> given;
+	for (const auto &entry : h.names)
+		given.insert(entry.second);
+	const std::regex quoted(name);
+	int names_seen = 0;
+	for (const auto &line : h.log.lines)
+		for (auto it = std::sregex_iterator(line.second.begin(), line.second.end(), quoted);
+		     it != std::sregex_iterator(); ++it) {
+			std::string text;
+			const std::string found = it->str();
+			for (size_t i = 1; i + 1 < found.size(); i++) {
+				if (found[i] == '\\')
+					i++;
+				text += found[i];
+			}
+			CHECK_MESSAGE(given.count(text) == 1, line.second);
+			names_seen++;
+		}
+	CHECK(names_seen > 0);
+	CHECK(lines_at(h, LogLevel::Info, "reading.stable") ==
+	      std::vector<std::string>{"reading.stable camera=\"Cam A\" reading_ms=+100 spread_ms=0",
+				       "reading.stable camera=\"Desk \\\"Cam\\\" \\\\ 2\" reading_ms=+40 spread_ms=0"});
 }

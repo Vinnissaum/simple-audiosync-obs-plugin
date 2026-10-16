@@ -17,6 +17,25 @@ constexpr uint64_t no_sound_ns = 5000000000;
 // How long a ticked camera's tap may deliver no frame while measuring before the camera is taken as deactivated.
 constexpr uint64_t no_frames_ns = 2000000000;
 
+// The shortest time between two lines of one camera's skipped frames.
+constexpr uint64_t skipped_log_ns = 5000000000;
+
+// The debug lines. The spec gives them no format; they follow the key=value form of LogLines.
+std::string video_marker_line(const char *event, const std::string &camera, const VideoMarker &marker)
+{
+	const QrPayload &qr = marker.qr_data;
+	return std::string(event) + " camera=" + quote(camera) + " index=" + std::to_string(qr.index) +
+	       " time_ns=" + std::to_string(marker.timestamp) + " f=" + std::to_string(qr.f) +
+	       " c=" + std::to_string(qr.c) + " q_ms=" + std::to_string(qr.q_ms) +
+	       " index_max=" + std::to_string(qr.index_max);
+}
+
+std::string audio_marker_line(const char *event, const std::string &mic, const AudioMarker &marker)
+{
+	return std::string(event) + " mic=" + quote(mic) + " index=" + std::to_string(marker.index) +
+	       " time_ns=" + std::to_string(marker.timestamp);
+}
+
 } // namespace
 
 Session::Session(TapFactory &factory, Clock clock, Logger log, NameOf name_of)
@@ -91,6 +110,7 @@ StartResult Session::start(FrameRate rate)
 	estimator_.reset_counters();
 	restart_no_sound_wait();
 	state_ = SessionState::Measuring;
+	write_log(log_, LogLevel::Info, measure_start(cameras_.size(), mic_tap_.name, rate.fps_num, rate.fps_den));
 	return StartResult::Started;
 }
 
@@ -103,6 +123,7 @@ void Session::stop()
 	release_taps(released);
 	restart_no_sound_wait();
 	state_ = SessionState::Stopped;
+	write_log(log_, LogLevel::Info, measure_stop());
 }
 
 void Session::reset()
@@ -113,6 +134,7 @@ void Session::reset()
 	estimator_.clear();
 	pattern_.reset();
 	restart_no_sound_wait();
+	write_log(log_, LogLevel::Info, measure_reset());
 }
 
 void Session::collection_changing()
@@ -188,9 +210,20 @@ void Session::tick()
 	// A tap's thread may stamp a frame after the clock is read here, so the comparison adds rather than subtracts.
 	const uint64_t now = clock_();
 	std::vector<SourceId> silent;
-	for (const auto &entry : camera_taps_)
-		if (entry.second.pipeline->last_frame_ns() + no_frames_ns <= now)
+	for (auto &entry : camera_taps_) {
+		TappedCamera &tapped = entry.second;
+		const uint64_t skipped = tapped.tap->skipped_frames();
+		if (skipped != tapped.skipped_logged &&
+		    (!tapped.skipped_logged_ns || *tapped.skipped_logged_ns + skipped_log_ns <= now)) {
+			write_log(log_, LogLevel::Debug,
+				  "frames.skipped camera=" + quote(tapped.name) +
+					  " skipped=" + std::to_string(skipped));
+			tapped.skipped_logged = skipped;
+			tapped.skipped_logged_ns = now;
+		}
+		if (tapped.pipeline->last_frame_ns() + no_frames_ns <= now)
 			silent.push_back(entry.first);
+	}
 	for (const SourceId &camera : silent)
 		untick(camera, released);
 }
@@ -198,8 +231,10 @@ void Session::tick()
 void Session::on_video_marker(const SourceId &camera, const VideoMarker &marker)
 {
 	std::lock_guard<std::mutex> lock(mutex_);
-	if (state_ != SessionState::Measuring)
+	auto tapped = camera_taps_.find(camera);
+	if (state_ != SessionState::Measuring || tapped == camera_taps_.end())
 		return;
+	const std::string &name = tapped->second.name;
 
 	// The first marker's pattern is the one the session follows until Reset: the mic listens for its sound and the
 	// estimator pairs by its wrap (READ-17). Another pattern's markers are ignored (READ-18).
@@ -210,8 +245,10 @@ void Session::on_video_marker(const SourceId &camera, const VideoMarker &marker)
 		if (mic_tap_.pipeline)
 			mic_tap_.pipeline->set_pattern(params.f, params.c, params.q_ms);
 	} else if (!(params == *pattern_)) {
+		write_log(log_, LogLevel::Debug, video_marker_line("marker.ignored", name, marker));
 		return;
 	}
+	write_log(log_, LogLevel::Debug, video_marker_line("marker.video", name, marker));
 
 	// The wait for the mic starts at the first video marker no audio marker answered, and starts over once the video
 	// markers have stopped for 5 s (READ-42, READ-43).
@@ -220,7 +257,9 @@ void Session::on_video_marker(const SourceId &camera, const VideoMarker &marker)
 		unanswered_since_ = now;
 	last_video_ns_ = now;
 
-	estimator_.on_video_marker(camera, marker.qr_data.index, marker.timestamp);
+	const SampleResult result = estimator_.on_video_marker(camera, marker.qr_data.index, marker.timestamp);
+	if (result.stable_changed)
+		write_log(log_, LogLevel::Info, reading_stable(name, result.reading_ms, result.spread_ms));
 }
 
 void Session::on_audio_marker(const AudioMarker &marker)
@@ -228,10 +267,21 @@ void Session::on_audio_marker(const AudioMarker &marker)
 	std::lock_guard<std::mutex> lock(mutex_);
 	// With no pattern there is nothing to listen for: after Reset the mic may still decode the pattern it cleared
 	// until a camera reads one again (READ-19).
-	if (state_ != SessionState::Measuring || !pattern_)
+	if (state_ != SessionState::Measuring)
 		return;
+	if (!pattern_) {
+		write_log(log_, LogLevel::Debug, audio_marker_line("marker.ignored", mic_tap_.name, marker));
+		return;
+	}
+	write_log(log_, LogLevel::Debug, audio_marker_line("marker.audio", mic_tap_.name, marker));
 	unanswered_since_.reset();
-	estimator_.on_audio_marker(static_cast<uint32_t>(marker.index), marker.timestamp);
+	for (const StableChange &change :
+	     estimator_.on_audio_marker(static_cast<uint32_t>(marker.index), marker.timestamp)) {
+		auto tapped = camera_taps_.find(change.camera);
+		if (tapped != camera_taps_.end())
+			write_log(log_, LogLevel::Info,
+				  reading_stable(tapped->second.name, change.reading_ms, change.spread_ms));
+	}
 }
 
 SessionSnapshot Session::snapshot() const
@@ -254,13 +304,14 @@ bool Session::tap_mic()
 	// A pattern kept through Stop is listened for at once (READ-26).
 	if (pattern_)
 		pipeline->set_pattern(pattern_->f, pattern_->c, pattern_->q_ms);
+	std::string name = name_of_(*mic_);
 	std::unique_ptr<Tap> tap = factory_.create_mic_tap(*mic_, *pipeline);
 	if (!tap) {
 		mic_tap_failed_ = true;
-		write_log(log_, LogLevel::Warning, "tap.failed mic=" + quote(name_of_(*mic_)));
+		write_log(log_, LogLevel::Warning, "tap.failed mic=" + quote(name));
 		return false;
 	}
-	mic_tap_ = TappedMic{std::move(pipeline), std::move(tap)};
+	mic_tap_ = TappedMic{std::move(name), std::move(pipeline), std::move(tap)};
 	return true;
 }
 
@@ -269,12 +320,17 @@ void Session::tap_camera(const SourceId &camera)
 	auto pipeline = std::make_unique<CameraPipeline>(log_, clock_, [this, camera](const VideoMarker &marker) {
 		on_video_marker(camera, marker);
 	});
+	std::string name = name_of_(camera);
 	std::unique_ptr<Tap> tap = factory_.create_camera_tap(camera, *pipeline);
 	if (!tap) {
-		write_log(log_, LogLevel::Warning, "tap.failed camera=" + quote(name_of_(camera)));
+		write_log(log_, LogLevel::Warning, "tap.failed camera=" + quote(name));
 		return;
 	}
-	camera_taps_.emplace(camera, TappedCamera{std::move(pipeline), std::move(tap)});
+	TappedCamera tapped;
+	tapped.name = std::move(name);
+	tapped.pipeline = std::move(pipeline);
+	tapped.tap = std::move(tap);
+	camera_taps_.emplace(camera, std::move(tapped));
 }
 
 // Drops one camera's reading, and hands its tap, if it has one, to released.
