@@ -10,7 +10,7 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 
 **Spec**: `.specs/features/reading/spec.md` (READ-01 to READ-98)
 **Design**: `.specs/features/reading/design.md`
-**Status**: Draft. Written, not approved, not started.
+**Status**: In progress. T1 to T33 done and pushed; T34 to T37 wait for the rig.
 
 **Prerequisites before Execute:**
 

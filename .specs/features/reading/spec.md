@@ -190,7 +190,7 @@ Facts below were checked on 2026-10-15 against the repository at `55c0270`, the 
 5. WHILE a camera is Stable with a reading below 0 its row SHALL read the reading with a leading "−" (U+2212) and " ms - video early" (for example "−60 ms - video early"). **READ-40**
 6. WHILE a camera is Stable with a reading of 0 its row SHALL read "0 ms - in sync". **READ-41**
 7. WHILE the session is Measuring, IF 5 s or more have passed since the first video marker (of any camera) that followed the last audio marker or Start, no audio marker has arrived in that time, and a video marker arrived within the last 5 s THEN the message line SHALL read "No pattern sound from {mic} - bring the phone closer or unmute it" with the mic's name. **READ-42**
-8. WHEN an audio marker arrives, or 5 s pass with no video marker, or the session leaves Measuring THEN the message line SHALL stop showing the no-sound message. **READ-43**
+8. WHEN an audio marker arrives, or 5 s pass with no video marker, or the session leaves Measuring THEN the message line SHALL stop showing the no-sound message, and the wait starts over from the next video marker. **READ-43**
 9. WHEN a camera is unticked or dropped (removed, renamed or deactivated) THEN the view-model SHALL show no reading or status for it. **READ-44**
 10. The view-model SHALL label the Start/Stop button "Stop" while the session is Measuring and "Start" otherwise. **READ-45**
 11. The view-model SHALL disable Reset while the session is Idle and enable it while the session is Measuring or Stopped. **READ-46**
@@ -213,7 +213,7 @@ Facts below were checked on 2026-10-15 against the repository at `55c0270`, the 
 
 1. WHEN the dock opens THEN the source catalog SHALL list, sorted by name ignoring case, every source with asynchronous video (webcams, capture cards, media and NDI sources) as a camera, and every source with an audio output as a mic candidate. **READ-49**
 2. WHEN the dock opens or a collection finishes loading with no saved selection THEN the catalog SHALL tick every camera in the current Program scene, counting cameras inside nested scenes and groups. **READ-50**
-3. WHEN the dock opens or a collection finishes loading with no saved selection and exactly one source in the collection has an audio output THEN the catalog SHALL choose that source as the mic. **READ-51**
+3. WHEN the dock opens or a collection finishes loading with no saved selection and exactly one source in the collection has an audio output THEN the catalog SHALL choose that source as the mic, unless it is a ticked camera (READ-60 keeps a ticked camera off the mic list), in which case the mic is left unset. **READ-51**
 4. WHEN a saved selection of version 1 exists THEN the catalog SHALL tick and choose exactly the sources whose UUIDs it names that still exist, and SHALL NOT preselect anything. **READ-52**
 5. IF a saved selection's `version` is not 1 THEN the catalog SHALL treat the collection as having no saved selection. **READ-53**
 6. WHEN OBS saves the scene collection THEN the selection store SHALL write the module data `{"version": 1, "cameras": [{"uuid": <UUID>}, ...], "mic": <UUID>}` for the chosen cameras and mic, leaving out `mic` when no mic is chosen. **READ-54**
@@ -395,104 +395,104 @@ Implicit-requirement sweep, Complex scope:
 
 | Requirement ID | Story | Phase | Status |
 | -------------- | ----- | ----- | ------ |
-| READ-01 | Story 1, P1: A camera's reading comes from pairing its markers with the mic's | - | Pending |
-| READ-02 | Story 1, P1: A camera's reading comes from pairing its markers with the mic's | - | Pending |
-| READ-03 | Story 1, P1: A camera's reading comes from pairing its markers with the mic's | - | Pending |
-| READ-04 | Story 1, P1: A camera's reading comes from pairing its markers with the mic's | - | Pending |
-| READ-05 | Story 1, P1: A camera's reading comes from pairing its markers with the mic's | - | Pending |
-| READ-06 | Story 1, P1: A camera's reading comes from pairing its markers with the mic's | - | Pending |
-| READ-07 | Story 1, P1: A camera's reading comes from pairing its markers with the mic's | - | Pending |
-| READ-08 | Story 1, P1: A camera's reading comes from pairing its markers with the mic's | - | Pending |
-| READ-09 | Story 2, P1: A camera's state follows its samples | - | Pending |
-| READ-10 | Story 2, P1: A camera's state follows its samples | - | Pending |
-| READ-11 | Story 2, P1: A camera's state follows its samples | - | Pending |
-| READ-12 | Story 2, P1: A camera's state follows its samples | - | Pending |
-| READ-13 | Story 2, P1: A camera's state follows its samples | - | Pending |
-| READ-14 | Story 2, P1: A camera's state follows its samples | - | Pending |
-| READ-15 | Story 2, P1: A camera's state follows its samples | - | Pending |
-| READ-16 | Story 2, P1: A camera's state follows its samples | - | Pending |
-| READ-17 | Story 3, P1: One pattern, read by a detector per camera and one for the mic | - | Pending |
-| READ-18 | Story 3, P1: One pattern, read by a detector per camera and one for the mic | - | Pending |
-| READ-19 | Story 3, P1: One pattern, read by a detector per camera and one for the mic | - | Pending |
-| READ-20 | Story 3, P1: One pattern, read by a detector per camera and one for the mic | - | Pending |
-| READ-21 | Story 3, P1: One pattern, read by a detector per camera and one for the mic | - | Pending |
-| READ-22 | Story 3, P1: One pattern, read by a detector per camera and one for the mic | - | Pending |
-| READ-23 | Story 3, P1: One pattern, read by a detector per camera and one for the mic | - | Pending |
-| READ-24 | Story 4, P1: A measuring session starts, stops and resets | - | Pending |
-| READ-25 | Story 4, P1: A measuring session starts, stops and resets | - | Pending |
-| READ-26 | Story 4, P1: A measuring session starts, stops and resets | - | Pending |
-| READ-27 | Story 4, P1: A measuring session starts, stops and resets | - | Pending |
-| READ-28 | Story 4, P1: A measuring session starts, stops and resets | - | Pending |
-| READ-29 | Story 4, P1: A measuring session starts, stops and resets | - | Pending |
-| READ-30 | Story 4, P1: A measuring session starts, stops and resets | - | Pending |
-| READ-31 | Story 4, P1: A measuring session starts, stops and resets | - | Pending |
-| READ-32 | Story 4, P1: A measuring session starts, stops and resets | - | Pending |
-| READ-33 | Story 4, P1: A measuring session starts, stops and resets | - | Pending |
-| READ-34 | Story 4, P1: A measuring session starts, stops and resets | - | Pending |
-| READ-35 | Story 4, P1: A measuring session starts, stops and resets | - | Pending |
-| READ-36 | Story 5, P1: The dock tells the user the state of every camera | - | Pending |
-| READ-37 | Story 5, P1: The dock tells the user the state of every camera | - | Pending |
-| READ-38 | Story 5, P1: The dock tells the user the state of every camera | - | Pending |
-| READ-39 | Story 5, P1: The dock tells the user the state of every camera | - | Pending |
-| READ-40 | Story 5, P1: The dock tells the user the state of every camera | - | Pending |
-| READ-41 | Story 5, P1: The dock tells the user the state of every camera | - | Pending |
-| READ-42 | Story 5, P1: The dock tells the user the state of every camera | - | Pending |
-| READ-43 | Story 5, P1: The dock tells the user the state of every camera | - | Pending |
-| READ-44 | Story 5, P1: The dock tells the user the state of every camera | - | Pending |
-| READ-45 | Story 5, P1: The dock tells the user the state of every camera | - | Pending |
-| READ-46 | Story 5, P1: The dock tells the user the state of every camera | - | Pending |
-| READ-47 | Story 5, P1: The dock tells the user the state of every camera | - | Pending |
-| READ-48 | Story 5, P1: The dock tells the user the state of every camera | - | Pending |
-| READ-49 | Story 6, P1: The dock lists the cameras and mics and remembers the choice | - | Pending |
-| READ-50 | Story 6, P1: The dock lists the cameras and mics and remembers the choice | - | Pending |
-| READ-51 | Story 6, P1: The dock lists the cameras and mics and remembers the choice | - | Pending |
-| READ-52 | Story 6, P1: The dock lists the cameras and mics and remembers the choice | - | Pending |
-| READ-53 | Story 6, P1: The dock lists the cameras and mics and remembers the choice | - | Pending |
-| READ-54 | Story 6, P1: The dock lists the cameras and mics and remembers the choice | - | Pending |
-| READ-55 | Story 6, P1: The dock lists the cameras and mics and remembers the choice | - | Pending |
-| READ-56 | Story 6, P1: The dock lists the cameras and mics and remembers the choice | - | Pending |
-| READ-57 | Story 6, P1: The dock lists the cameras and mics and remembers the choice | - | Pending |
-| READ-58 | Story 6, P1: The dock lists the cameras and mics and remembers the choice | - | Pending |
-| READ-59 | Story 6, P1: The dock lists the cameras and mics and remembers the choice | - | Pending |
-| READ-60 | Story 6, P1: The dock lists the cameras and mics and remembers the choice | - | Pending |
-| READ-61 | Story 7, P1: Every selected camera is measured at once, without touching the user's setup | - | Pending |
-| READ-62 | Story 7, P1: Every selected camera is measured at once, without touching the user's setup | - | Pending |
-| READ-63 | Story 7, P1: Every selected camera is measured at once, without touching the user's setup | - | Pending |
-| READ-64 | Story 7, P1: Every selected camera is measured at once, without touching the user's setup | - | Pending |
-| READ-65 | Story 7, P1: Every selected camera is measured at once, without touching the user's setup | - | Pending |
-| READ-66 | Story 7, P1: Every selected camera is measured at once, without touching the user's setup | - | Pending |
-| READ-67 | Story 7, P1: Every selected camera is measured at once, without touching the user's setup | - | Pending |
-| READ-68 | Story 7, P1: Every selected camera is measured at once, without touching the user's setup | - | Pending |
-| READ-69 | Story 7, P1: Every selected camera is measured at once, without touching the user's setup | - | Pending |
-| READ-70 | Story 8, P1: The dock renders the session and forwards clicks | - | Pending |
-| READ-71 | Story 8, P1: The dock renders the session and forwards clicks | - | Pending |
-| READ-72 | Story 8, P1: The dock renders the session and forwards clicks | - | Pending |
-| READ-73 | Story 8, P1: The dock renders the session and forwards clicks | - | Pending |
-| READ-74 | Story 8, P1: The dock renders the session and forwards clicks | - | Pending |
-| READ-75 | Story 8, P1: The dock renders the session and forwards clicks | - | Pending |
-| READ-76 | Story 9, P1: The rig confirms the readings | - | Pending |
-| READ-77 | Story 9, P1: The rig confirms the readings | - | Pending |
-| READ-78 | Story 9, P1: The rig confirms the readings | - | Pending |
-| READ-79 | Story 9, P1: The rig confirms the readings | - | Pending |
-| READ-80 | Story 9, P1: The rig confirms the readings | - | Pending |
-| READ-81 | Story 9, P1: The rig confirms the readings | - | Pending |
-| READ-82 | Story 9, P1: The rig confirms the readings | - | Pending |
-| READ-83 | Story 9, P1: The rig confirms the readings | - | Pending |
-| READ-84 | Story 10, P2: Measuring is visible in the OBS log | - | Pending |
-| READ-85 | Story 10, P2: Measuring is visible in the OBS log | - | Pending |
-| READ-86 | Story 10, P2: Measuring is visible in the OBS log | - | Pending |
-| READ-87 | Story 10, P2: Measuring is visible in the OBS log | - | Pending |
-| READ-88 | Story 10, P2: Measuring is visible in the OBS log | - | Pending |
-| READ-89 | Story 10, P2: Measuring is visible in the OBS log | - | Pending |
-| READ-90 | Story 11, P2: The core's quality gates run in CI | - | Pending |
-| READ-91 | Story 11, P2: The core's quality gates run in CI | - | Pending |
-| READ-92 | Story 11, P2: The core's quality gates run in CI | - | Pending |
-| READ-93 | Story 12, P2: Measuring stays inside the performance budget | - | Pending |
-| READ-94 | Story 12, P2: Measuring stays inside the performance budget | - | Pending |
-| READ-95 | Story 12, P2: Measuring stays inside the performance budget | - | Pending |
-| READ-96 | Story 12, P2: Measuring stays inside the performance budget | - | Pending |
-| READ-97 | Story 13, P3: Details show how well each camera sees the pattern | - | Pending |
-| READ-98 | Story 13, P3: Details show how well each camera sees the pattern | - | Pending |
+| READ-01 | Story 1, P1: A camera's reading comes from pairing its markers with the mic's | Execute | Done (T2, T3) |
+| READ-02 | Story 1, P1: A camera's reading comes from pairing its markers with the mic's | Execute | Done (T3) |
+| READ-03 | Story 1, P1: A camera's reading comes from pairing its markers with the mic's | Execute | Done (T3) |
+| READ-04 | Story 1, P1: A camera's reading comes from pairing its markers with the mic's | Execute | Done (T3) |
+| READ-05 | Story 1, P1: A camera's reading comes from pairing its markers with the mic's | Execute | Done (T3) |
+| READ-06 | Story 1, P1: A camera's reading comes from pairing its markers with the mic's | Execute | Done (T3) |
+| READ-07 | Story 1, P1: A camera's reading comes from pairing its markers with the mic's | Execute | Done (T5) |
+| READ-08 | Story 1, P1: A camera's reading comes from pairing its markers with the mic's | Execute | Done (T5) |
+| READ-09 | Story 2, P1: A camera's state follows its samples | Execute | Done (T3) |
+| READ-10 | Story 2, P1: A camera's state follows its samples | Execute | Done (T3) |
+| READ-11 | Story 2, P1: A camera's state follows its samples | Execute | Done (T3, T4) |
+| READ-12 | Story 2, P1: A camera's state follows its samples | Execute | Done (T2, T4) |
+| READ-13 | Story 2, P1: A camera's state follows its samples | Execute | Done (T4) |
+| READ-14 | Story 2, P1: A camera's state follows its samples | Execute | Done (T4) |
+| READ-15 | Story 2, P1: A camera's state follows its samples | Execute | Done (T4) |
+| READ-16 | Story 2, P1: A camera's state follows its samples | Execute | Done (T2, T4, T14) |
+| READ-17 | Story 3, P1: One pattern, read by a detector per camera and one for the mic | Execute | Done (T15) |
+| READ-18 | Story 3, P1: One pattern, read by a detector per camera and one for the mic | Execute | Done (T15) |
+| READ-19 | Story 3, P1: One pattern, read by a detector per camera and one for the mic | Execute | Done (T8) |
+| READ-20 | Story 3, P1: One pattern, read by a detector per camera and one for the mic | Execute | Done (T9) |
+| READ-21 | Story 3, P1: One pattern, read by a detector per camera and one for the mic | Execute | Done (T10) |
+| READ-22 | Story 3, P1: One pattern, read by a detector per camera and one for the mic | Execute | Done (T11) |
+| READ-23 | Story 3, P1: One pattern, read by a detector per camera and one for the mic | Execute | Done (T1) |
+| READ-24 | Story 4, P1: A measuring session starts, stops and resets | Execute | Done (T14) |
+| READ-25 | Story 4, P1: A measuring session starts, stops and resets | Execute | Done (T15) |
+| READ-26 | Story 4, P1: A measuring session starts, stops and resets | Execute | Done (T15) |
+| READ-27 | Story 4, P1: A measuring session starts, stops and resets | Execute | Done (T15); rig check pending (T34) |
+| READ-28 | Story 4, P1: A measuring session starts, stops and resets | Execute | Done (T14, T32) |
+| READ-29 | Story 4, P1: A measuring session starts, stops and resets | Execute | Done (T14, T32) |
+| READ-30 | Story 4, P1: A measuring session starts, stops and resets | Execute | Done (T14) |
+| READ-31 | Story 4, P1: A measuring session starts, stops and resets | Execute | Done (T14) |
+| READ-32 | Story 4, P1: A measuring session starts, stops and resets | Execute | Done (T16) |
+| READ-33 | Story 4, P1: A measuring session starts, stops and resets | Execute | Done (T16) |
+| READ-34 | Story 4, P1: A measuring session starts, stops and resets | Execute | Done (T16) |
+| READ-35 | Story 4, P1: A measuring session starts, stops and resets | Execute | Done (T16); rig check pending (T34) |
+| READ-36 | Story 5, P1: The dock tells the user the state of every camera | Execute | Done (T22) |
+| READ-37 | Story 5, P1: The dock tells the user the state of every camera | Execute | Done (T21) |
+| READ-38 | Story 5, P1: The dock tells the user the state of every camera | Execute | Done (T21) |
+| READ-39 | Story 5, P1: The dock tells the user the state of every camera | Execute | Done (T21) |
+| READ-40 | Story 5, P1: The dock tells the user the state of every camera | Execute | Done (T21) |
+| READ-41 | Story 5, P1: The dock tells the user the state of every camera | Execute | Done (T21) |
+| READ-42 | Story 5, P1: The dock tells the user the state of every camera | Execute | Done (T17, T22) |
+| READ-43 | Story 5, P1: The dock tells the user the state of every camera | Execute | Done (T17, T22) |
+| READ-44 | Story 5, P1: The dock tells the user the state of every camera | Execute | Done (T21) |
+| READ-45 | Story 5, P1: The dock tells the user the state of every camera | Execute | Done (T22) |
+| READ-46 | Story 5, P1: The dock tells the user the state of every camera | Execute | Done (T22) |
+| READ-47 | Story 5, P1: The dock tells the user the state of every camera | Execute | Done (T22) |
+| READ-48 | Story 5, P1: The dock tells the user the state of every camera | Execute | Done (T20) |
+| READ-49 | Story 6, P1: The dock lists the cameras and mics and remembers the choice | Execute | Done (T12, T27) |
+| READ-50 | Story 6, P1: The dock lists the cameras and mics and remembers the choice | Execute | Done (T12, T27) |
+| READ-51 | Story 6, P1: The dock lists the cameras and mics and remembers the choice | Execute | Done (T12) |
+| READ-52 | Story 6, P1: The dock lists the cameras and mics and remembers the choice | Execute | Done (T12) |
+| READ-53 | Story 6, P1: The dock lists the cameras and mics and remembers the choice | Execute | Done (T12, T28) |
+| READ-54 | Story 6, P1: The dock lists the cameras and mics and remembers the choice | Execute | Done (T12, T28) |
+| READ-55 | Story 6, P1: The dock lists the cameras and mics and remembers the choice | Execute | Done (T18, T32); rig check pending (T34) |
+| READ-56 | Story 6, P1: The dock lists the cameras and mics and remembers the choice | Execute | Done (T18, T32); rig check pending (T34) |
+| READ-57 | Story 6, P1: The dock lists the cameras and mics and remembers the choice | Execute | Done (T7, T18); rig check pending (T34) |
+| READ-58 | Story 6, P1: The dock lists the cameras and mics and remembers the choice | Execute | Done (T18, T32) |
+| READ-59 | Story 6, P1: The dock lists the cameras and mics and remembers the choice | Execute | Done (T18, T32) |
+| READ-60 | Story 6, P1: The dock lists the cameras and mics and remembers the choice | Execute | Done (T12) |
+| READ-61 | Story 7, P1: Every selected camera is measured at once, without touching the user's setup | Execute | Built (T30, T31); rig check pending (T35) |
+| READ-62 | Story 7, P1: Every selected camera is measured at once, without touching the user's setup | Execute | Built (T29, T31); rig check pending (T35) |
+| READ-63 | Story 7, P1: Every selected camera is measured at once, without touching the user's setup | Execute | Built (T30); rig check pending (T35) |
+| READ-64 | Story 7, P1: Every selected camera is measured at once, without touching the user's setup | Execute | Built (T30); rig check pending (T35) |
+| READ-65 | Story 7, P1: Every selected camera is measured at once, without touching the user's setup | Execute | Pending rig (T35) |
+| READ-66 | Story 7, P1: Every selected camera is measured at once, without touching the user's setup | Execute | Built (T29, T30); rig check pending (T34) |
+| READ-67 | Story 7, P1: Every selected camera is measured at once, without touching the user's setup | Execute | Done (T14, T30); rig check pending (T34) |
+| READ-68 | Story 7, P1: Every selected camera is measured at once, without touching the user's setup | Execute | Done (T14, T29) |
+| READ-69 | Story 7, P1: Every selected camera is measured at once, without touching the user's setup | Execute | Done (T7, T30); rig check pending (T35) |
+| READ-70 | Story 8, P1: The dock renders the session and forwards clicks | Execute | Built (T33) |
+| READ-71 | Story 8, P1: The dock renders the session and forwards clicks | Execute | Built (T33) |
+| READ-72 | Story 8, P1: The dock renders the session and forwards clicks | Execute | Built (T33) |
+| READ-73 | Story 8, P1: The dock renders the session and forwards clicks | Execute | Built (T33) |
+| READ-74 | Story 8, P1: The dock renders the session and forwards clicks | Execute | Built (T33) |
+| READ-75 | Story 8, P1: The dock renders the session and forwards clicks | Execute | Built (T33) |
+| READ-76 | Story 9, P1: The rig confirms the readings | Execute | Pending rig (T34) |
+| READ-77 | Story 9, P1: The rig confirms the readings | Execute | Pending rig (T34) |
+| READ-78 | Story 9, P1: The rig confirms the readings | Execute | Pending rig (T34) |
+| READ-79 | Story 9, P1: The rig confirms the readings | Execute | Pending rig (T35) |
+| READ-80 | Story 9, P1: The rig confirms the readings | Execute | Pending rig (T35) |
+| READ-81 | Story 9, P1: The rig confirms the readings | Execute | Pending rig (T34) |
+| READ-82 | Story 9, P1: The rig confirms the readings | Execute | Pending rig (T34) |
+| READ-83 | Story 9, P1: The rig confirms the readings | Execute | Pending rig (T37) |
+| READ-84 | Story 10, P2: Measuring is visible in the OBS log | Execute | Done (T13, T19) |
+| READ-85 | Story 10, P2: Measuring is visible in the OBS log | Execute | Done (T13, T19) |
+| READ-86 | Story 10, P2: Measuring is visible in the OBS log | Execute | Done (T13, T19) |
+| READ-87 | Story 10, P2: Measuring is visible in the OBS log | Execute | Done (T19) |
+| READ-88 | Story 10, P2: Measuring is visible in the OBS log | Execute | Done (T13) |
+| READ-89 | Story 10, P2: Measuring is visible in the OBS log | Execute | Done (T19) |
+| READ-90 | Story 11, P2: The core's quality gates run in CI | Execute | Done (T24) |
+| READ-91 | Story 11, P2: The core's quality gates run in CI | Execute | Done (T26) |
+| READ-92 | Story 11, P2: The core's quality gates run in CI | Execute | Done (T25) |
+| READ-93 | Story 12, P2: Measuring stays inside the performance budget | Execute | Pending rig (T36) |
+| READ-94 | Story 12, P2: Measuring stays inside the performance budget | Execute | Pending rig (T36) |
+| READ-95 | Story 12, P2: Measuring stays inside the performance budget | Execute | Pending rig (T36) |
+| READ-96 | Story 12, P2: Measuring stays inside the performance budget | Execute | Built (T32); rig check pending (T36) |
+| READ-97 | Story 13, P3: Details show how well each camera sees the pattern | Execute | Done (T23) |
+| READ-98 | Story 13, P3: Details show how well each camera sees the pattern | Execute | Done (T6) |
 
 **ID format:** `READ-NN`. The TDD's suggested READ-01 to READ-10 name design rows: dock opened (story 6), start without camera or mic (story 5), no pattern seen (stories 2 and 5), no pattern sound (stories 3 and 5), settling (stories 2 and 5), stable (stories 2 and 5), pattern lost (story 2), removed, renamed or deactivated (story 6), Stop, Reset, collection switch (story 4), the remembered selection (story 6).
 
