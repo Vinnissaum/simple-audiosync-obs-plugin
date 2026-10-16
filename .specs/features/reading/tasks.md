@@ -794,8 +794,8 @@ T35 → T37
 
 **Done when**:
 
-- [ ] On save it writes `version` 1, `cameras` as an array of strings and `mic` as a string or null.
-- [ ] On load it returns a `SavedSelection`, or `nullopt` when the key is absent or malformed; the version field is passed through for `initial_choice` to judge.
+- [ ] On save it writes `version` 1, `cameras` as an array of objects that each hold one camera's `uuid`, and `mic` as a string, left out when no mic is chosen (READ-54 as amended on 2026-10-16: OBS 30's `obs_data` holds arrays of objects only and writes no null).
+- [ ] On load it returns a `SavedSelection`, or `nullopt` when the key is absent or malformed, or when OBS passes no module data at all (a null `save_data`, which OBS 30.0 passes for a collection with no `modules` object); the version field is passed through for `initial_choice` to judge.
 - [ ] No rule beyond the field copy; the file is added to `CMakeLists.txt`.
 - [ ] CI gate passes on all three platforms.
 

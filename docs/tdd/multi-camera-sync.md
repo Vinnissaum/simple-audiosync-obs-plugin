@@ -13,7 +13,7 @@
 | Size            | Large: three slices and two spikes, several weeks of one developer's time                 |
 | Status          | Draft                                                                                     |
 | Created         | 2026-10-11                                                                                |
-| Last Updated    | 2026-10-11                                                                                |
+| Last Updated    | 2026-10-16                                                                                |
 
 ## Context
 
@@ -403,12 +403,12 @@ The selection, per scene collection:
 ```json
 {
   "version": 1,
-  "cameras": ["8b1f3c2e-…", "d47a90b1-…"],
+  "cameras": [{ "uuid": "8b1f3c2e-…" }, { "uuid": "d47a90b1-…" }],
   "mic": "5c0e7f44-…"
 }
 ```
 
-UUIDs that no longer resolve are ignored. With no saved selection, the dock preselects as the design's Reading table says. An unknown `version` counts as no saved selection.
+`mic` is left out when no mic is chosen. The cameras are objects and a missing mic is a missing key because OBS writes the scene collection through `obs_data`, which in OBS 30 holds arrays of objects only and writes no null. UUIDs that no longer resolve are ignored. With no saved selection, the dock preselects as the design's Reading table says. An unknown `version` counts as no saved selection.
 
 The Undo snapshot, in memory:
 

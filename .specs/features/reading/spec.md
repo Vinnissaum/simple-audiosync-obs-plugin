@@ -70,6 +70,7 @@ Facts below were checked on 2026-10-15 against the repository at `55c0270`, the 
 | Coverage gate | 90% of lines in `core/`, excluding `core/detector/` (Sync Dock's code, covered by the detector fixtures instead) | The TDD sets 90% for the core; Foundation deferred the gate to this phase. Upstream code the project did not write is judged by its outputs | n |
 | Foundation's T16 | Stays open. The dock this phase builds replaces the one-line dock, so FND-22 no longer describes it; the rig run in story 9 loads the plugin in OBS 30.0.0 and the latest stable and covers FND-19, FND-20 and FND-24 for the new dock | One OBS machine session serves both | n |
 | Confirmed lessons | None exist (`.specs/lessons.json` holds four candidates, which are not loaded) | Skill rule: load confirmed lessons only | y |
+| The saved selection's JSON shape (amended 2026-10-16) | `{"version": 1, "cameras": [{"uuid": <UUID>}, ...], "mic": <UUID>}`, with `mic` left out when none is chosen; still version 1, since nothing has shipped | OBS 30's `obs_data`, which writes the scene collection, holds arrays of objects only and writes no null, so the first shape (an array of UUID strings and a null mic) cannot be saved | y |
 
 **Open questions:** none - all resolved or logged above (required before the spec is confirmed).
 
@@ -215,7 +216,7 @@ Facts below were checked on 2026-10-15 against the repository at `55c0270`, the 
 3. WHEN the dock opens or a collection finishes loading with no saved selection and exactly one source in the collection has an audio output THEN the catalog SHALL choose that source as the mic. **READ-51**
 4. WHEN a saved selection of version 1 exists THEN the catalog SHALL tick and choose exactly the sources whose UUIDs it names that still exist, and SHALL NOT preselect anything. **READ-52**
 5. IF a saved selection's `version` is not 1 THEN the catalog SHALL treat the collection as having no saved selection. **READ-53**
-6. WHEN OBS saves the scene collection THEN the selection store SHALL write the module data `{"version": 1, "cameras": [<UUIDs>], "mic": <UUID or null>}` for the chosen cameras and mic. **READ-54**
+6. WHEN OBS saves the scene collection THEN the selection store SHALL write the module data `{"version": 1, "cameras": [{"uuid": <UUID>}, ...], "mic": <UUID>}` for the chosen cameras and mic, leaving out `mic` when no mic is chosen. **READ-54**
 7. WHEN a ticked camera is removed from OBS THEN the session SHALL drop its reading and release its tap, and the catalog SHALL remove it from the list and from the selection. **READ-55**
 8. WHEN a ticked camera is renamed THEN the session SHALL drop its reading and release its tap, and the catalog SHALL show it under its new name, unticked. **READ-56**
 9. WHILE the session is Measuring, IF a ticked camera delivers no frames for 2 s THEN the session SHALL drop its reading, release its tap and untick it, and the catalog SHALL keep it listed. **READ-57**

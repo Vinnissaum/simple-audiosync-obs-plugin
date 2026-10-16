@@ -225,7 +225,7 @@ Three rules keep it testable:
 - **Interfaces**:
   - `std::vector<SourceInfo> ObsCatalog::list()`: enumerates sources; `in_program` is true for sources inside the current Program scene, recursing nested scenes and groups.
   - Signal wiring calls `Controller::on_*` for `source_remove`, `source_rename`, `filter_add`, `filter_remove` and `audio_sync` of the chosen mic. Per-source signals are connected for the ticked cameras and the chosen mic and disconnected when they leave the selection.
-  - `SelectionStore`: `obs_frontend_add_save_callback`; on save writes `version`, `cameras` (an `obs_data_array` of strings) and `mic` under the module's key; on load builds a `SavedSelection` or `nullopt`. Mapping only, no rule (READ-54, READ-53).
+  - `SelectionStore`: `obs_frontend_add_save_callback`; on save writes `version`, `cameras` (an `obs_data_array` of objects, each holding one camera's `uuid`) and `mic` (a string, left out when no mic is chosen) under the module's key; on load builds a `SavedSelection` or `nullopt`, including when OBS passes a null `save_data`. Mapping only, no rule (READ-54, READ-53). OBS 30's `obs_data` holds arrays of objects only and writes no null, which is why the cameras are objects and a missing mic is a missing key (amended 2026-10-16).
 - **Dependencies**: libobs, `selection-policy`.
 
 ### src/: Controller and Dock
