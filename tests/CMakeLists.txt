@@ -12,6 +12,7 @@ target_sources(
     detector/video-detector.cpp
     detector/audio-detector.cpp
     detector/video-cycles.cpp
+    detector/pattern-sync.cpp
     reading/pattern.cpp
     reading/estimator.cpp
     reading/camera-pipeline.cpp

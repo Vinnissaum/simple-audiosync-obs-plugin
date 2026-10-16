@@ -361,9 +361,9 @@ T35 → T37
 
 **Done when**:
 
-- [ ] For indices 0 to 3, the video marker time and the audio marker time differ by at most 1 ms (READ-21: marker times within 1 ms of the generated time, anchored on the generator's sync).
-- [ ] **If any index differs by more than 1 ms**, do not widen the bound. Record the measured bias per index in this file and stop: READ-20, READ-21 and READ-22 need a user decision (amend the spec, or fix the detector).
-- [ ] Added doctest cases: 1. Quick gate passes.
+- [x] For indices 0 to 3, the video marker time and the audio marker time differ by at most 1 ms (READ-21: marker times within 1 ms of the generated time, anchored on the generator's sync). The mic pipeline takes the pattern from the first video marker's payload, as the session will.
+- [x] **If any index differs by more than 1 ms**, do not widen the bound. Record the measured bias per index in this file and stop: READ-20, READ-21 and READ-22 need a user decision (amend the spec, or fix the detector). Measured video minus audio: −0.054 ms at each of indices 0, 1, 2 and 3 (video 133.333 ms, audio 133.388 ms into each cycle), so no index is over the bound.
+- [x] Added doctest cases: 1. Quick gate passes. Test count: ran 72, which is 71 plus 1.
 
 **Tests**: unit
 **Gate**: quick
