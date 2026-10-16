@@ -507,11 +507,11 @@ T35 → T37
 
 **Done when**:
 
-- [ ] Ticking a camera while Measuring requests one tap and reports it Looking; while Stopped it only joins the selection (READ-32).
-- [ ] Unticking a camera while Measuring or Stopped releases its tap if it has one, drops its reading, and leaves every other camera's tap and reading as they were (READ-33).
-- [ ] Choosing another mic clears every reading and the pattern, and while Measuring replaces the mic tap and reports every camera Looking (READ-34).
-- [ ] `on_mic_removed` releases every tap, clears readings and the pattern and enters Idle (READ-35).
-- [ ] Added doctest cases: at least 6. Quick gate passes.
+- [x] Ticking a camera while Measuring requests one tap and reports it Looking; while Stopped it only joins the selection (READ-32). Nothing else is asked for again, and the cameras already measured keep their readings.
+- [x] Unticking a camera while Measuring or Stopped releases its tap if it has one, drops its reading, and leaves every other camera's tap and reading as they were (READ-33). Ticked again, the camera starts over at Looking, so the reading was dropped, not hidden.
+- [x] Choosing another mic clears every reading and the pattern, and while Measuring replaces the mic tap and reports every camera Looking (READ-34). The cameras keep their taps, and the new mic's tap listens for the next pattern a camera reads (checked with the audio fixture). The spec does not say what follows while Measuring when the new mic's tap cannot be made, or when no mic is chosen any more: measuring ends as it does for a removed mic, with every tap released and the session Idle; a tap that cannot be made also warns and sets `mic_tap_failed` (READ-68). The mic's pipeline and tap are now held together, like a camera's.
+- [x] `on_mic_removed` releases every tap, clears readings and the pattern and enters Idle (READ-35). It also clears the chosen mic, so the dock asks for one (the design's error table); the cameras stay ticked. Choosing a mic afterwards clears the pattern too, so the test sees it gone either way.
+- [x] Added doctest cases: at least 6. Quick gate passes. Added 7. Test count: ran 114, which is 107 plus 7.
 
 **Tests**: unit
 **Gate**: quick

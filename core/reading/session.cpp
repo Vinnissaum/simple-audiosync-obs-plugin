@@ -23,17 +23,40 @@ Session::~Session()
 
 void Session::set_selection(std::vector<SourceId> cameras, std::optional<SourceId> mic)
 {
+	Released released; // destroyed after the lock below is released
 	std::lock_guard<std::mutex> lock(mutex_);
 	if (cameras == cameras_ && mic == mic_)
 		return;
+	mic_tap_failed_ = false;
+
+	// An unticked camera loses its tap and its reading; the others keep theirs (READ-33).
 	for (const SourceId &camera : cameras_)
 		if (std::find(cameras.begin(), cameras.end(), camera) == cameras.end())
-			estimator_.remove_camera(camera);
-	for (const SourceId &camera : cameras)
+			drop_camera(camera, released);
+	// A newly ticked camera is measured at once while measuring, and only joins the selection otherwise (READ-32).
+	for (const SourceId &camera : cameras) {
+		if (std::find(cameras_.begin(), cameras_.end(), camera) != cameras_.end())
+			continue;
 		estimator_.add_camera(camera);
+		if (state_ == SessionState::Measuring)
+			tap_camera(camera);
+	}
 	cameras_ = std::move(cameras);
+
+	if (mic == mic_)
+		return;
+	// A reading is relative to one mic, so neither the readings nor the pattern survive a change of mic (READ-34).
 	mic_ = std::move(mic);
-	mic_tap_failed_ = false;
+	estimator_.clear();
+	pattern_.reset();
+	if (state_ != SessionState::Measuring)
+		return;
+	released.mics.push_back(std::move(mic_tap_));
+	// With no mic to listen to, measuring ends as it does when the mic is removed.
+	if (!mic_ || !tap_mic()) {
+		release_taps(released);
+		state_ = SessionState::Idle;
+	}
 }
 
 StartResult Session::start(FrameRate rate)
@@ -45,20 +68,9 @@ StartResult Session::start(FrameRate rate)
 		return StartResult::NothingChosen;
 
 	// The mic first: nothing is measured without it, and no camera's tap has been made yet to undo.
-	auto mic_pipeline = std::make_unique<MicPipeline>(
-		log_, factory_.mic_sample_rate(), [this](const AudioMarker &marker) { on_audio_marker(marker); });
-	// A pattern kept through Stop is listened for at once (READ-26).
-	if (pattern_)
-		mic_pipeline->set_pattern(pattern_->f, pattern_->c, pattern_->q_ms);
-	std::unique_ptr<Tap> mic_tap = factory_.create_mic_tap(*mic_, *mic_pipeline);
-	if (!mic_tap) {
-		mic_tap_failed_ = true;
-		write_log(log_, LogLevel::Warning, "tap.failed mic=" + quote(name_of_(*mic_)));
+	if (!tap_mic())
 		return StartResult::MicTapFailed;
-	}
 	mic_tap_failed_ = false;
-	mic_pipeline_ = std::move(mic_pipeline);
-	mic_tap_ = std::move(mic_tap);
 
 	for (const SourceId &camera : cameras_)
 		tap_camera(camera);
@@ -112,6 +124,18 @@ void Session::shutdown()
 		state_ = SessionState::Stopped;
 }
 
+void Session::on_mic_removed()
+{
+	Released released; // destroyed after the lock below is released
+	std::lock_guard<std::mutex> lock(mutex_);
+	release_taps(released);
+	estimator_.clear();
+	pattern_.reset();
+	mic_.reset();
+	mic_tap_failed_ = false;
+	state_ = SessionState::Idle;
+}
+
 void Session::on_video_marker(const SourceId &camera, const VideoMarker &marker)
 {
 	std::lock_guard<std::mutex> lock(mutex_);
@@ -124,8 +148,8 @@ void Session::on_video_marker(const SourceId &camera, const VideoMarker &marker)
 	if (!pattern_) {
 		pattern_ = params;
 		estimator_.set_pattern(params);
-		if (mic_pipeline_)
-			mic_pipeline_->set_pattern(params.f, params.c, params.q_ms);
+		if (mic_tap_.pipeline)
+			mic_tap_.pipeline->set_pattern(params.f, params.c, params.q_ms);
 	} else if (!(params == *pattern_)) {
 		return;
 	}
@@ -153,6 +177,24 @@ SessionSnapshot Session::snapshot() const
 	return snapshot;
 }
 
+// Makes the mic's pipeline and tap, where the session has none. A tap that cannot be made is logged and remembered.
+bool Session::tap_mic()
+{
+	auto pipeline = std::make_unique<MicPipeline>(log_, factory_.mic_sample_rate(),
+						      [this](const AudioMarker &marker) { on_audio_marker(marker); });
+	// A pattern kept through Stop is listened for at once (READ-26).
+	if (pattern_)
+		pipeline->set_pattern(pattern_->f, pattern_->c, pattern_->q_ms);
+	std::unique_ptr<Tap> tap = factory_.create_mic_tap(*mic_, *pipeline);
+	if (!tap) {
+		mic_tap_failed_ = true;
+		write_log(log_, LogLevel::Warning, "tap.failed mic=" + quote(name_of_(*mic_)));
+		return false;
+	}
+	mic_tap_ = TappedMic{std::move(pipeline), std::move(tap)};
+	return true;
+}
+
 void Session::tap_camera(const SourceId &camera)
 {
 	auto pipeline = std::make_unique<CameraPipeline>(log_, clock_, [this, camera](const VideoMarker &marker) {
@@ -163,16 +205,26 @@ void Session::tap_camera(const SourceId &camera)
 		write_log(log_, LogLevel::Warning, "tap.failed camera=" + quote(name_of_(camera)));
 		return;
 	}
-	tapped_.emplace(camera, TappedCamera{std::move(pipeline), std::move(tap)});
+	camera_taps_.emplace(camera, TappedCamera{std::move(pipeline), std::move(tap)});
+}
+
+// Drops one camera's reading, and hands its tap, if it has one, to released.
+void Session::drop_camera(const SourceId &camera, Released &released)
+{
+	estimator_.remove_camera(camera);
+	auto found = camera_taps_.find(camera);
+	if (found == camera_taps_.end())
+		return;
+	released.cameras.push_back(std::move(found->second));
+	camera_taps_.erase(found);
 }
 
 void Session::release_taps(Released &released)
 {
-	for (auto &entry : tapped_)
+	for (auto &entry : camera_taps_)
 		released.cameras.push_back(std::move(entry.second));
-	tapped_.clear();
-	released.mic_tap = std::move(mic_tap_);
-	released.mic_pipeline = std::move(mic_pipeline_);
+	camera_taps_.clear();
+	released.mics.push_back(std::move(mic_tap_));
 }
 
 } // namespace camera_sync

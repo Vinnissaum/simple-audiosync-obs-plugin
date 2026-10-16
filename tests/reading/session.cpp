@@ -704,3 +704,186 @@ TEST_CASE("session keeps the pattern after the camera that brought it leaves, un
 	CHECK(h.row("cam-b").samples == 1);
 	CHECK(h.row("cam-b").live_ms == 60);
 }
+
+TEST_CASE("session measures a camera ticked while measuring at once")
+{
+	Harness h;
+	h.session.set_selection({"cam-a"}, "mic");
+	REQUIRE(h.session.start({30, 1}) == StartResult::Started);
+	h.sample("cam-a", 0, one_s, 100 * one_ms);
+
+	// READ-32: one tap for the new camera, which starts Looking; nothing else is asked for again.
+	h.session.set_selection({"cam-a", "cam-b"}, "mic");
+	CHECK(h.factory.requests == std::vector<std::string>{"mic:mic", "camera:cam-a", "camera:cam-b"});
+	CHECK(h.factory.live == std::multiset<std::string>{"mic:mic", "camera:cam-a", "camera:cam-b"});
+	CHECK(h.row("cam-b").state == CameraState::Looking);
+	CHECK(h.row("cam-a").state == CameraState::Settling);
+	CHECK(h.row("cam-a").live_ms == 100);
+	h.sample("cam-b", 1, 2 * one_s, 40 * one_ms);
+	CHECK(h.row("cam-b").state == CameraState::Settling);
+	CHECK(h.row("cam-b").live_ms == 40);
+}
+
+TEST_CASE("session adds a camera ticked while stopped to the selection only")
+{
+	Harness h;
+	h.session.set_selection({"cam-a"}, "mic");
+	REQUIRE(h.session.start({30, 1}) == StartResult::Started);
+	h.session.stop();
+
+	// READ-32: no tap while stopped; the camera is ticked, Looking, and measured at the next Start.
+	h.session.set_selection({"cam-a", "cam-b"}, "mic");
+	CHECK(h.factory.requests.size() == 2);
+	CHECK(h.factory.live.empty());
+	CHECK(h.row("cam-b").state == CameraState::Looking);
+	REQUIRE(h.session.start({30, 1}) == StartResult::Started);
+	CHECK(h.factory.live == std::multiset<std::string>{"mic:mic", "camera:cam-a", "camera:cam-b"});
+}
+
+TEST_CASE("session releases an unticked camera's tap and reading and leaves the others")
+{
+	Harness h;
+	h.session.set_selection({"cam-a", "cam-b"}, "mic");
+	REQUIRE(h.session.start({30, 1}) == StartResult::Started);
+	for (uint32_t i = 0; i < 5; i++)
+		h.sample("cam-a", 20 + i, one_s + i * 200 * one_ms, 100 * one_ms);
+	h.sample("cam-b", 20, one_s, 40 * one_ms);
+	REQUIRE(h.row("cam-a").state == CameraState::Stable);
+
+	std::multiset<std::string> live;
+	SUBCASE("while measuring")
+	{
+		live = {"mic:mic", "camera:cam-b"};
+	}
+	SUBCASE("while stopped")
+	{
+		h.session.stop();
+	}
+
+	// READ-33: cam A's tap and reading go; cam B's tap and reading and the mic's tap stay, none asked for again.
+	h.session.set_selection({"cam-b"}, "mic");
+	CHECK_FALSE(h.has_row("cam-a"));
+	CHECK(h.factory.live == live);
+	CHECK(h.factory.requests.size() == 3);
+	CHECK(h.row("cam-b").state == CameraState::Settling);
+	CHECK(h.row("cam-b").live_ms == 40);
+
+	// The reading was dropped, not hidden: ticked again, cam A starts over.
+	h.session.set_selection({"cam-a", "cam-b"}, "mic");
+	CHECK(h.row("cam-a").state == CameraState::Looking);
+	CHECK(h.row("cam-a").samples == 0);
+}
+
+TEST_CASE("session replaces the mic's tap and clears every reading and the pattern when another mic is chosen")
+{
+	Harness h;
+	h.session.set_selection({"cam-a", "cam-b"}, "mic");
+	REQUIRE(h.session.start({60, 1}) == StartResult::Started);
+	const PatternParams first{1000, 2, 66, 256};
+	for (uint32_t i = 0; i < 5; i++)
+		h.sample("cam-a", 20 + i, one_s + i * 200 * one_ms, 100 * one_ms, first);
+	h.sample("cam-b", 20, one_s, 40 * one_ms, first);
+	REQUIRE(h.row("cam-a").state == CameraState::Stable);
+
+	// READ-34: the new mic's tap replaces the old one, the cameras keep theirs, and every camera is Looking.
+	h.session.set_selection({"cam-a", "cam-b"}, "mic-2");
+	CHECK(h.snap().state == SessionState::Measuring);
+	CHECK(h.factory.requests == std::vector<std::string>{"mic:mic", "camera:cam-a", "camera:cam-b", "mic:mic-2"});
+	CHECK(h.factory.live == std::multiset<std::string>{"mic:mic-2", "camera:cam-a", "camera:cam-b"});
+	CHECK(h.row("cam-a").state == CameraState::Looking);
+	CHECK(h.row("cam-a").samples == 0);
+	CHECK(h.row("cam-b").state == CameraState::Looking);
+	CHECK(h.row("cam-b").samples == 0);
+
+	// The pattern went too: the fixture's pattern is followed now, and the new mic listens for its sound.
+	REQUIRE(h.factory.audio_sink);
+	const uint64_t start_ns = 10 * one_s;
+	const std::vector<AudioMarker> heard = clip_markers(start_ns);
+	h.session.on_video_marker("cam-a", Harness::video(heard[0].index, heard[0].timestamp + 100 * one_ms));
+	hear_clip(*h.factory.audio_sink, start_ns);
+	CHECK(h.row("cam-a").state == CameraState::Settling);
+	CHECK(h.row("cam-a").live_ms == 100);
+}
+
+TEST_CASE("session clears every reading and the pattern when another mic is chosen while stopped")
+{
+	Harness h;
+	h.session.set_selection({"cam-a"}, "mic");
+	REQUIRE(h.session.start({30, 1}) == StartResult::Started);
+	for (uint32_t i = 0; i < 5; i++)
+		h.sample("cam-a", 20 + i, one_s + i * 200 * one_ms, 100 * one_ms);
+	h.session.stop();
+
+	// READ-34: no tap while stopped, and no reading kept.
+	h.session.set_selection({"cam-a"}, "mic-2");
+	CHECK(h.snap().state == SessionState::Stopped);
+	CHECK(h.factory.requests.size() == 2);
+	CHECK(h.row("cam-a").state == CameraState::Looking);
+	CHECK(h.row("cam-a").samples == 0);
+
+	// The next Start listens to the new mic and follows whatever pattern comes first.
+	REQUIRE(h.session.start({30, 1}) == StartResult::Started);
+	CHECK(h.factory.live == std::multiset<std::string>{"mic:mic-2", "camera:cam-a"});
+	h.sample("cam-a", 1, 3 * one_s, 40 * one_ms, PatternParams{1000, 2, 66, 256});
+	CHECK(h.row("cam-a").state == CameraState::Settling);
+	CHECK(h.row("cam-a").live_ms == 40);
+}
+
+TEST_CASE("session stops measuring when a change leaves it no mic to listen to")
+{
+	Harness h;
+	h.factory.refuse = {"mic-2"};
+	h.session.set_selection({"cam-a"}, "mic");
+	REQUIRE(h.session.start({30, 1}) == StartResult::Started);
+
+	SUBCASE("the new mic's tap cannot be made")
+	{
+		// READ-34 with READ-68: a warning, and the failure for the dock's message.
+		h.session.set_selection({"cam-a"}, "mic-2");
+		CHECK(h.snap().mic_tap_failed);
+		CHECK(h.snap().mic == std::optional<SourceId>("mic-2"));
+		CHECK(h.log.at(LogLevel::Warning) == std::vector<std::string>{"tap.failed mic=\"Yeti\""});
+	}
+	SUBCASE("no mic is chosen")
+	{
+		h.session.set_selection({"cam-a"}, std::nullopt);
+		CHECK_FALSE(h.snap().mic_tap_failed);
+		CHECK(h.log.at(LogLevel::Warning).empty());
+	}
+
+	// Measuring ends as it does when the mic is removed: every tap released, and Idle.
+	CHECK(h.snap().state == SessionState::Idle);
+	CHECK(h.factory.live.empty());
+}
+
+TEST_CASE("session forgets every reading and the pattern and goes Idle when the mic is removed")
+{
+	Harness h;
+	h.session.set_selection({"cam-a", "cam-b"}, "mic");
+	REQUIRE(h.session.start({30, 1}) == StartResult::Started);
+	for (uint32_t i = 0; i < 5; i++)
+		h.sample("cam-a", 20 + i, one_s + i * 200 * one_ms, 100 * one_ms);
+	REQUIRE(h.row("cam-a").state == CameraState::Stable);
+
+	SUBCASE("while measuring") {}
+	SUBCASE("while stopped")
+	{
+		h.session.stop();
+	}
+
+	// READ-35: every tap goes, no reading is kept, and the session is Idle with no mic. The cameras stay ticked.
+	h.session.on_mic_removed();
+	CHECK(h.snap().state == SessionState::Idle);
+	CHECK(h.factory.live.empty());
+	CHECK_FALSE(h.snap().mic.has_value());
+	CHECK(h.row("cam-a").state == CameraState::Looking);
+	CHECK(h.row("cam-a").samples == 0);
+	CHECK(h.has_row("cam-b"));
+
+	// The pattern went too: with a mic chosen again, another pattern is followed.
+	h.session.set_selection({"cam-a", "cam-b"}, "mic-2");
+	REQUIRE(h.session.start({30, 1}) == StartResult::Started);
+	h.sample("cam-a", 1, 40 * one_s, 40 * one_ms, PatternParams{1000, 2, 66, 256});
+	CHECK(h.row("cam-a").state == CameraState::Settling);
+	CHECK(h.row("cam-a").live_ms == 40);
+}

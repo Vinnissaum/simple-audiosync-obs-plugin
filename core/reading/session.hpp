@@ -71,7 +71,9 @@ public:
 	Session(TapFactory &factory, Clock clock, Logger log, NameOf name_of);
 	~Session();
 
-	// The ticked cameras and the chosen mic.
+	// The ticked cameras and the chosen mic. A newly ticked camera is measured at once while measuring; an unticked one
+	// loses its tap and its reading. Another mic clears every reading and the pattern, and while measuring its tap
+	// replaces the old mic's.
 	void set_selection(std::vector<SourceId> cameras, std::optional<SourceId> mic);
 
 	// Measures every ticked camera against the mic at the canvas frame rate, from Idle or Stopped. With no camera or no
@@ -87,6 +89,9 @@ public:
 	// OBS is exiting: every tap goes before libobs does.
 	void shutdown();
 
+	// The chosen mic left OBS: every tap, reading and the pattern go, and the session is Idle.
+	void on_mic_removed();
+
 	// A camera's pipeline saw a flash of the pattern, or the mic's heard one. They are read only while measuring.
 	void on_video_marker(const SourceId &camera, const VideoMarker &marker);
 	void on_audio_marker(const AudioMarker &marker);
@@ -99,14 +104,21 @@ private:
 		std::unique_ptr<Tap> tap; // declared after the pipeline it delivers to, so it is destroyed first
 	};
 
-	// Taps taken out under the lock, destroyed once it is released: each tap before the pipeline it delivers to.
-	struct Released {
-		std::vector<TappedCamera> cameras;
-		std::unique_ptr<MicPipeline> mic_pipeline;
-		std::unique_ptr<Tap> mic_tap;
+	struct TappedMic {
+		std::unique_ptr<MicPipeline> pipeline;
+		std::unique_ptr<Tap> tap; // declared after the pipeline it delivers to, so it is destroyed first
 	};
 
+	// Taps taken out under the lock, destroyed once it is released.
+	struct Released {
+		std::vector<TappedCamera> cameras;
+		std::vector<TappedMic> mics;
+	};
+
+	// Each of these runs under the lock.
+	bool tap_mic();
 	void tap_camera(const SourceId &camera);
+	void drop_camera(const SourceId &camera, Released &released);
 	void release_taps(Released &released);
 
 	TapFactory &factory_;
@@ -121,9 +133,8 @@ private:
 	bool mic_tap_failed_ = false;
 	std::optional<PatternParams> pattern_;
 	ReadingEstimator estimator_;
-	std::unique_ptr<MicPipeline> mic_pipeline_;
-	std::unique_ptr<Tap> mic_tap_;
-	std::map<SourceId, TappedCamera> tapped_;
+	TappedMic mic_tap_;
+	std::map<SourceId, TappedCamera> camera_taps_;
 };
 
 } // namespace camera_sync
