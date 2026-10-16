@@ -1193,6 +1193,37 @@ TEST_CASE("session drops a camera that delivers no frame for 2 s")
 	CHECK(h.snap().state == SessionState::Measuring);
 }
 
+TEST_CASE("session unticks a camera that delivers no frame for 2 s")
+{
+	Harness h;
+	start_measuring(h);
+	h.sample("cam-a", 0, 0, 100 * one_ms);
+	deliver_frame(h, "cam-b", 1000);
+
+	// READ-57: cam A's tap has delivered nothing since it was made at t = 0.
+	tick_at(h, 2000);
+	REQUIRE_FALSE(h.has_row("cam-a"));
+
+	SUBCASE("ticked again while measuring, it is measured from Looking")
+	{
+		h.session.set_selection({"cam-a", "cam-b"}, "mic");
+		CHECK(h.row("cam-a").state == CameraState::Looking);
+		CHECK(h.row("cam-a").samples == 0);
+		CHECK(h.factory.requests ==
+		      std::vector<std::string>{"mic:mic", "camera:cam-a", "camera:cam-b", "camera:cam-a"});
+		CHECK(h.factory.live == std::multiset<std::string>{"mic:mic", "camera:cam-a", "camera:cam-b"});
+	}
+	SUBCASE("stop, then start, taps only the cameras still ticked")
+	{
+		h.session.stop();
+		REQUIRE(h.session.start({30, 1}) == StartResult::Started);
+		CHECK(h.factory.requests ==
+		      std::vector<std::string>{"mic:mic", "camera:cam-a", "camera:cam-b", "mic:mic", "camera:cam-b"});
+		CHECK(h.factory.live == std::multiset<std::string>{"mic:mic", "camera:cam-b"});
+		CHECK_FALSE(h.has_row("cam-a"));
+	}
+}
+
 TEST_CASE("session keeps a camera that delivers frames without the pattern")
 {
 	Harness h;
