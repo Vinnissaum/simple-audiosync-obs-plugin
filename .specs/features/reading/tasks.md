@@ -361,7 +361,7 @@ T35 → T37
 
 **Done when**:
 
-- [x] For indices 0 to 3, the video marker time and the audio marker time differ by at most 1 ms (READ-21: marker times within 1 ms of the generated time, anchored on the generator's sync). The mic pipeline takes the pattern from the first video marker's payload, as the session will.
+- [x] For indices 0 to 3, the video marker time and the audio marker time differ by at most 1 ms (READ-21: marker times within 1 ms of the generated time, anchored on the generator's sync). The mic pipeline takes the pattern from the first video marker's payload, as the session will. Follow-up (Verifier, READ-21 anchor): a second case checks every audio marker of the clip, indices 0 to 9, for its generated index and against its generated time, the start of frame 2q of its cycle. Measured: each is +0.054 ms off. Test count: 162.
 - [x] **If any index differs by more than 1 ms**, do not widen the bound. Record the measured bias per index in this file and stop: READ-20, READ-21 and READ-22 need a user decision (amend the spec, or fix the detector). Measured video minus audio: −0.054 ms at each of indices 0, 1, 2 and 3 (video 133.333 ms, audio 133.388 ms into each cycle), so no index is over the bound.
 - [x] Added doctest cases: 1. Quick gate passes. Test count: ran 72, which is 71 plus 1.
 
@@ -382,7 +382,7 @@ T35 → T37
 
 **Done when**:
 
-- [x] Camera A's timeline is offset +100 ms and camera B's +40 ms against the same audio; after the 4 cycles, A's `live_ms` is 100 ± 1 and B's is 40 ± 1 (READ-22), each camera has 4 samples and is Settling, and neither window holds the other's samples. Measured: A 100 and B 40 (samples of 99.946 and 39.946 ms). The test plays the session's part by hand: the first video marker's payload sets the pattern of the estimator and the mic.
+- [x] Camera A's timeline is offset +100 ms and camera B's +40 ms against the same audio; after the 4 cycles, A's `live_ms` is 100 ± 1 and B's is 40 ± 1 (READ-22), each camera has 4 samples and is Settling, and neither window holds the other's samples. Measured: A 100 and B 40 (samples of 99.946 and 39.946 ms). The test plays the session's part by hand: the first video marker's payload sets the pattern of the estimator and the mic. Follow-up (Verifier, READ-22 anchor): the case also checks each of the four samples as it forms, not only the latest. Measured: A 100 and B 40 each time.
 - [x] A third run with a camera that never sees the video leaves it Looking while A and B keep their samples. That camera's pipeline gets grey frames at the same times.
 - [x] Added doctest cases: 2. Quick gate passes. Test count: ran 74, which is 72 plus 2.
 

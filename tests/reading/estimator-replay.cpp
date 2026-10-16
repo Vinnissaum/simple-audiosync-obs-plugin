@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -41,10 +42,14 @@ struct Reading {
 	ReadingEstimator estimator;
 	MicPipeline mic;
 	bool pattern_set = false;
+	// Each camera's live value right after each sample it forms. The audio markers come after every video marker, in
+	// index order, so the sample an audio marker forms is the camera's newest by video time: the one live_ms shows.
+	std::map<SourceId, std::vector<int64_t>> samples;
 
 	Reading()
 		: mic(nullptr, sample_rate, [this](const AudioMarker &marker) {
 			  estimator.on_audio_marker(uint32_t(marker.index), marker.timestamp);
+			  note_samples();
 		  })
 	{
 		estimator.set_frame_interval_ms(camera_sync::frame_interval_ms(60, 1));
@@ -61,6 +66,15 @@ struct Reading {
 			}
 			estimator.on_video_marker(id, marker.qr_data.index, marker.timestamp);
 		};
+	}
+
+	void note_samples()
+	{
+		for (const CameraRow &row : estimator.snapshot().cameras) {
+			std::vector<int64_t> &seen = samples[row.id];
+			if (row.samples_formed > seen.size())
+				seen.push_back(row.live_ms);
+		}
 	}
 
 	// The mic hears the pattern's sound from time 0.
@@ -131,6 +145,16 @@ TEST_CASE("estimator reads two cameras' offsets from the pattern fixtures throug
 	CHECK(row_b.samples == 4);
 	CHECK(row_b.samples_formed == 4);
 	CHECK(std::abs(row_b.live_ms - 40) <= 1);
+
+	// Every one of the four samples, not only the latest.
+	const std::vector<int64_t> &samples_a = reading.samples["cam-a"];
+	REQUIRE(samples_a.size() == 4);
+	for (int64_t sample : samples_a)
+		CHECK(std::abs(sample - 100) <= 1);
+	const std::vector<int64_t> &samples_b = reading.samples["cam-b"];
+	REQUIRE(samples_b.size() == 4);
+	for (int64_t sample : samples_b)
+		CHECK(std::abs(sample - 40) <= 1);
 }
 
 TEST_CASE("estimator leaves a camera that never sees the pattern Looking while two others read theirs")
