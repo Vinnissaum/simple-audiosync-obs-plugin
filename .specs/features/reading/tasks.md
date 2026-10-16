@@ -818,11 +818,13 @@ T35 → T37
 
 **Done when**:
 
-- [ ] The callback builds an `AudioBlock` from `audio_data` with `timestamp = max(0, timestamp + sync_offset_ns)`, reading the offset on every block.
-- [ ] A muted block is sent as zeros of the same length and time.
-- [ ] The tap holds an `obs_weak_source_t`; a removed source makes the callback return without a call, and the destructor removes the callback and waits for one in flight.
-- [ ] Construction returns null when the source cannot be resolved.
-- [ ] CI gate passes on all three platforms. The timestamp claim is checked in T35.
+- [x] The callback builds an `AudioBlock` from `audio_data` with `timestamp = max(0, timestamp + sync_offset_ns)`, reading the offset on every block. The sum is taken as a signed 64-bit value and held at 0 below it. In OBS 30.0.2 the capture callback gets the source's audio after resampling (planar float at OBS's rate, so planes 0 and 1 go to the block, plane 1 null for mono) but with the device's timestamp, before the timing adjustment and the Sync Offset the mix adds (`obs-source.c`, `source_output_audio_data`).
+- [x] A muted block is sent as zeros of the same length and time. The zeros live in a buffer the tap reuses on the audio thread; a stereo block gets the zeros in both planes.
+- [x] The tap holds an `obs_weak_source_t`; a removed source makes the callback return without a call, and the destructor removes the callback and waits for one in flight. libobs calls the capture callbacks under `audio_cb_mutex`, which `obs_source_remove_audio_capture_callback` takes, so the removal waits. A source that is already destroyed took its callback list with it, and the destructor only releases the weak reference. `skipped_frames()` is 0: the callback hands over every block.
+- [x] Construction returns null when the source cannot be resolved. `MicTap::create(uuid, sink)`, through `obs_get_source_by_uuid`; the strong reference is released once the callback is added.
+- [x] CI gate passes on all three platforms. The timestamp claim is checked in T35. Quick gate: ran 158, unchanged (no test added). Checked before the push with the T27 `g++ -fsyntax-only` run, and with `-Wconversion` for the narrowing that MSVC's `/W3 /WX` rejects. With five sources the `target_sources` list takes gersemi's one-per-line form.
+
+**Test Adequacy (no tests added, Check B and D vacuous):** Check A: the bullets map to `src/obs/mic-tap.cpp` (`create`, `on_audio`, `~MicTap`) and `CMakeLists.txt`; the gate is the CI build, and the Sync Offset claim is compared with Sync Dock on the rig in T35. Check C: no test was added or changed. Verdict: criteria covered by the build; the rig check is open.
 
 **Tests**: none
 **Gate**: ci
