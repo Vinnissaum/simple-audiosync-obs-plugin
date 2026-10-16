@@ -881,8 +881,10 @@ T35 → T37
 
 **Done when**:
 
-- [ ] `create_camera_tap` and `create_mic_tap` return the taps, or null when construction fails; `mic_sample_rate()` returns the audio output's rate.
-- [ ] The file is added to `CMakeLists.txt`. CI gate passes on all three platforms.
+- [x] `create_camera_tap` and `create_mic_tap` return the taps, or null when construction fails; `mic_sample_rate()` returns the audio output's rate. They hand back `CameraTap::create` and `MicTap::create`, each null when its tap cannot be made. The rate is `audio_output_get_sample_rate(obs_get_audio())`: the mic tap's samples arrive after OBS has resampled them to its own rate (T29).
+- [x] The file is added to `CMakeLists.txt`. CI gate passes on all three platforms. Quick gate: ran 158, unchanged (no test added). Checked before the push with the T27 `g++ -fsyntax-only` run against the OBS 30.0.2 headers.
+
+**Test Adequacy (no tests added, Check B and D vacuous):** Check A: the bullets map to `src/obs/obs-tap-factory.cpp` and `CMakeLists.txt`; the gate is the CI build. Check C: no test was added or changed. Verdict: criteria covered by the build.
 
 **Tests**: none
 **Gate**: ci
