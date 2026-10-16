@@ -6,8 +6,8 @@
 #include <utility>
 #include <vector>
 
-#include "../detector/fixtures.hpp"
 #include "reading/camera-pipeline.hpp"
+#include "support/fixtures.hpp"
 
 using camera_sync::CameraPipeline;
 using camera_sync::Clock;

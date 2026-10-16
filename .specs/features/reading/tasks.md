@@ -315,11 +315,11 @@ T35 → T37
 
 **Done when**:
 
-- [ ] The 2 s fixture fed before `set_pattern` yields no marker (READ-19); fed after `set_pattern(884, 2, 66)` it yields the 10 indices 0 to 9 in order.
-- [ ] `set_pattern` called from a second thread while blocks are processed does not race (a thread test, run once under `-fsanitize=thread`).
-- [ ] A stereo block (two planes) decodes the same as the mono block of the same samples.
-- [ ] The fixture reader moves from `tests/detector/audio-detector.cpp` into a shared `tests/support/fixtures.hpp` helper; the existing detector tests still pass unchanged in meaning.
-- [ ] Added doctest cases: 4, in `tests/reading/mic-pipeline.cpp`. Quick gate passes.
+- [x] The 2 s fixture fed before `set_pattern` yields no marker (READ-19); fed after `set_pattern(884, 2, 66)` it yields the 10 indices 0 to 9 in order. `AudioSink` is declared in `mic-pipeline.hpp`.
+- [x] `set_pattern` called from a second thread while blocks are processed does not race (a thread test, run once under `-fsanitize=thread`). The run is recorded in the commit body.
+- [x] A stereo block (two planes) decodes the same as the mono block of the same samples: the same indices at the same times.
+- [x] The fixture reader moves from `tests/detector/audio-detector.cpp` into a shared `tests/support/fixtures.hpp` helper; the existing detector tests still pass unchanged in meaning. `tests/detector/fixtures.hpp` moved there too, so there is one helper, and `tests/` is on the test include path.
+- [x] Added doctest cases: 4, in `tests/reading/mic-pipeline.cpp`. Quick gate passes. Test count: ran 69, which is 65 plus 4.
 
 **Tests**: unit
 **Gate**: quick

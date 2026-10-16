@@ -14,11 +14,15 @@ target_sources(
     reading/pattern.cpp
     reading/estimator.cpp
     reading/camera-pipeline.cpp
+    reading/mic-pipeline.cpp
 )
 
 target_compile_definitions(camera-sync-tests PRIVATE CAMERA_SYNC_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
 
 target_include_directories(camera-sync-tests SYSTEM PRIVATE ${PROJECT_SOURCE_DIR}/third_party)
+
+# Shared test helpers, included as "support/<name>.hpp".
+target_include_directories(camera-sync-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(camera-sync-tests PRIVATE camera-sync-core)
 

@@ -7,7 +7,7 @@
 
 #include "detector/qr-payload.hpp"
 #include "detector/video-detector.hpp"
-#include "fixtures.hpp"
+#include "support/fixtures.hpp"
 
 using camera_sync::LogLevel;
 using camera_sync::LumaFormat;
