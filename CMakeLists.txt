@@ -86,6 +86,7 @@ target_sources(
   PRIVATE
     src/plugin-main.cpp
     src/camera-sync-dock.cpp
+    src/controller.cpp
     src/obs/obs-catalog.cpp
     src/obs/selection-store.cpp
     src/obs/mic-tap.cpp

@@ -32,6 +32,10 @@ public:
 	// once its sources exist and before it reports the collection loaded.
 	const std::optional<SavedSelection> &saved() const { return saved_; }
 
+	// Drops what the last load found, when a collection switch begins. OBS creates or duplicates a collection without
+	// loading one, and such a collection saved nothing.
+	void forget() { saved_.reset(); }
+
 private:
 	static void on_save(struct obs_data *save_data, bool saving, void *param);
 	void write(struct obs_data *save_data) const;

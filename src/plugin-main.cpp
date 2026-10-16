@@ -21,11 +21,16 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #include <plugin-support.h>
 
 #include "camera-sync-dock.hpp"
+#include "controller.hpp"
 #include "load-line.hpp"
 #include "obs/camera-tap.hpp"
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
+
+// Connects OBS to the measuring session from load to unload. It lets go of OBS at the frontend's exit event, before
+// obs_module_unload runs.
+static camera_sync::Controller *controller = nullptr;
 
 bool obs_module_load(void)
 {
@@ -34,11 +39,14 @@ bool obs_module_load(void)
 	obs_log(LOG_INFO, "%s", line.c_str());
 
 	camera_sync::CameraTap::register_output();
+	controller = new camera_sync::Controller();
 	camera_sync_register_dock();
 	return true;
 }
 
 void obs_module_unload(void)
 {
+	delete controller;
+	controller = nullptr;
 	obs_log(LOG_INFO, "plugin unloaded");
 }
