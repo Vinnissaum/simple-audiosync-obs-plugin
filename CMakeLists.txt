@@ -8,6 +8,9 @@ option(CAMERA_SYNC_CORE_ONLY "Build only the OBS-free core and its unit tests" O
 # Instruments the core and its tests so that gcovr can measure the core's line coverage. It needs GCC or Clang.
 option(CAMERA_SYNC_COVERAGE "Instrument the core and its tests for line coverage" OFF)
 
+# Builds the libFuzzer target for the QR payload parser. It needs Clang. The corpus replay in CTest builds without it.
+option(CAMERA_SYNC_FUZZ "Build the libFuzzer target for the QR payload parser" OFF)
+
 if(CAMERA_SYNC_CORE_ONLY)
   file(READ "${CMAKE_CURRENT_SOURCE_DIR}/buildspec.json" buildspec)
   string(JSON _name GET ${buildspec} name)

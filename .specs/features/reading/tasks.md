@@ -720,12 +720,14 @@ T35 → T37
 
 **Done when**:
 
-- [ ] `LLVMFuzzerTestOneInput` copies the input, appends a NUL, calls `decode`, and aborts when it returns true with a value outside f 10 to 32,000, c 1 to f, q 1 to 1,000 or i 0 to 255.
-- [ ] `tests/fuzz/corpus/` holds boundary seeds: f=9, 10, 32000, 32001; c=0, 1, f, f+1; q=0, 1, 1000, 1001; i=-1, 0, 255, 256; an empty input; 4,096 `a` bytes; a missing key; repeated keys; a negative number; a 40-digit number.
-- [ ] A `qr-payload-replay` executable runs every corpus file through the same function and is registered as the CTest test `fuzz_corpus_replay`; it builds with any compiler.
-- [ ] With `CAMERA_SYNC_FUZZ=ON` and Clang, `qr-payload-fuzz` builds with `-fsanitize=fuzzer,address`; the option is off by default.
-- [ ] Verified locally once: deleting the `f` upper-bound check in `QrPayload::check` makes `fuzz_corpus_replay` fail (reverted before committing).
-- [ ] Added CTest tests: 1. Quick gate passes.
+- [x] `LLVMFuzzerTestOneInput` copies the input, appends a NUL, calls `decode`, and aborts when it returns true with a value outside f 10 to 32,000, c 1 to f, q 1 to 1,000 or i 0 to 255. It also aborts when `valid` is false on a true return, and prints the values first. The function is in `qr-payload-fuzz.cpp`; `qr-payload-replay.cpp` is the replay's `main`.
+- [x] `tests/fuzz/corpus/` holds boundary seeds: f=9, 10, 32000, 32001; c=0, 1, f, f+1; q=0, 1, 1000, 1001; i=-1, 0, 255, 256; an empty input; 4,096 `a` bytes; a missing key; repeated keys; a negative number; a 40-digit number. 23 files, 7,191 bytes with the sources, named for what they hold (`f-32001`, `c-f-plus-1`, `i-minus-1`, `empty`, `a-4096`, `missing-i`, `repeated-f-valid-then-invalid`, ...). Each is `f=884,c=2,q=66,i=0` with one value changed. A repeated key is tested in both orders.
+- [x] A `qr-payload-replay` executable runs every corpus file through the same function and is registered as the CTest test `fuzz_corpus_replay`; it builds with any compiler. The replay fails when the corpus directory holds no file, so a wrong path cannot pass.
+- [x] With `CAMERA_SYNC_FUZZ=ON` and Clang, `qr-payload-fuzz` builds with `-fsanitize=fuzzer,address`; the option is off by default. Not built on the WSL machine, which has no Clang and gets none; T26's CI job is its first build. The option stops the configure with a message on any other compiler.
+- [x] Verified locally once: deleting the `f` upper-bound check in `QrPayload::check` makes `fuzz_corpus_replay` fail (reverted before committing). Done for each of the seven range checks (f lower, f upper, c lower, c upper, q lower, q upper, i): each removal aborts the replay (`Subprocess aborted`). `core/detector/qr-payload.hpp` was restored and is not in the commit.
+- [x] Added CTest tests: 1. Quick gate passes. Test count: ran 158, which is 157 plus 1. The core-coverage total stays 97.40% (the replay adds no core line).
+
+**Test Adequacy:** Check A: criterion 1 `tests/fuzz/qr-payload-fuzz.cpp:14-16` (copy, NUL) and `:19-27` (`if (!payload.decode(text.data(), nullptr))`, the range test, `std::abort()`), shown to fire by the seven removals above; criterion 2 `tests/fuzz/corpus/` (one file per listed boundary); criterion 3 `tests/CMakeLists.txt:52-56` (`add_test(NAME fuzz_corpus_replay COMMAND qr-payload-replay ...)`), run passing in the 158; criterion 4 `tests/CMakeLists.txt:60-70` (not built here, see its bullet); criterion 5 the seven removals. Check B: the replay's assertion is an abort on an accepted out-of-range value, and each removal makes it fire, so it is not a no-error tautology. Check C: the one CTest test maps to READ-92. Check D: the layout of `tests/CMakeLists.txt` and the SPDX header rule. Verdict: all criteria covered except criterion 4, whose build waits for T26's Clang job.
 
 **Tests**: unit
 **Gate**: quick

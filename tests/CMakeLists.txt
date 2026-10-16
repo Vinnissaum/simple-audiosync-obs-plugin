@@ -47,6 +47,28 @@ if(CAMERA_SYNC_COVERAGE)
   target_link_libraries(camera-sync-tests PRIVATE "$<LINK_LIBRARY:WHOLE_ARCHIVE,camera-sync-core>")
 endif()
 
+# The QR payload parser takes text from whatever a camera sees. Every build replays the fuzzer's seed corpus through the
+# fuzz target's function, and the test fails if a payload that is out of range is accepted.
+add_executable(qr-payload-replay fuzz/qr-payload-replay.cpp fuzz/qr-payload-fuzz.cpp)
+
+target_link_libraries(qr-payload-replay PRIVATE camera-sync-core)
+
+add_test(NAME fuzz_corpus_replay COMMAND qr-payload-replay ${CMAKE_CURRENT_SOURCE_DIR}/fuzz/corpus)
+
+# With Clang, the same function builds as a libFuzzer target. The fuzzer and the parser's code are instrumented, and the
+# core library, which the parser's header does not need, is not.
+if(CAMERA_SYNC_FUZZ)
+  if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    message(FATAL_ERROR "CAMERA_SYNC_FUZZ needs Clang, found ${CMAKE_CXX_COMPILER_ID}")
+  endif()
+
+  add_executable(qr-payload-fuzz fuzz/qr-payload-fuzz.cpp)
+
+  target_compile_options(qr-payload-fuzz PRIVATE -fsanitize=fuzzer,address)
+  target_link_options(qr-payload-fuzz PRIVATE -fsanitize=fuzzer,address)
+  target_link_libraries(qr-payload-fuzz PRIVATE camera-sync-core)
+endif()
+
 # One CTest test per doctest test case, so ctest -R <name> runs the matching test cases.
 doctest_discover_tests(camera-sync-tests)
 
