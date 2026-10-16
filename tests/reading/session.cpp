@@ -966,6 +966,30 @@ TEST_CASE("session clears no pattern sound when the video markers stop for 5 s")
 	CHECK(no_sound_at(h, 17000));
 }
 
+TEST_CASE("session starts the wait for pattern sound over when video markers resume 5 s after the last")
+{
+	Harness h;
+	start_measuring(h);
+	see_markers(h, 0, 4800);
+	REQUIRE(no_sound_at(h, 5000));
+
+	// READ-42, READ-43: the last video marker was at 4.8 s. The wait starts over at the next one only when the markers
+	// have stopped for 5 s or more.
+	SUBCASE("the next marker 4.999 s later: the wait goes on")
+	{
+		see_markers(h, 9799, 9799);
+		CHECK(no_sound_at(h, 9799));
+	}
+	SUBCASE("the next marker exactly 5 s later: the wait starts over at it")
+	{
+		see_markers(h, 9800, 9800);
+		CHECK_FALSE(no_sound_at(h, 9800));
+		see_markers(h, 10000, 14600);
+		CHECK_FALSE(no_sound_at(h, 14799));
+		CHECK(no_sound_at(h, 14800));
+	}
+}
+
 TEST_CASE("session clears no pattern sound at stop, reset, start and another mic")
 {
 	Harness h;
