@@ -53,6 +53,9 @@ add_executable(qr-payload-replay fuzz/qr-payload-replay.cpp fuzz/qr-payload-fuzz
 
 target_link_libraries(qr-payload-replay PRIVATE camera-sync-core)
 
+# The macOS CI step builds only camera-sync-tests before it runs CTest, so building that target builds the replay too.
+add_dependencies(camera-sync-tests qr-payload-replay)
+
 add_test(NAME fuzz_corpus_replay COMMAND qr-payload-replay ${CMAKE_CURRENT_SOURCE_DIR}/fuzz/corpus)
 
 # With Clang, the same function builds as a libFuzzer target. The fuzzer and the parser's code are instrumented, and the
