@@ -17,7 +17,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 // Derived from Audio Video Sync Dock, src/sync-test-output.hpp at e4ad2941ed5f2982e9f17b76ebaf22096319f3cb
-// Changed for Camera Sync: libobs's blog is the injected Logger. The payload parsing and its range checks are unchanged.
+// Changed for Camera Sync: libobs's blog is the injected Logger, a payload is parsed into a fresh copy that replaces this
+// one only when it passes, and a rejected payload logs at debug level. The parsing and the range checks are unchanged.
 #pragma once
 
 #include <cstdint>
@@ -81,37 +82,43 @@ struct QrPayload {
 	bool check(const Logger &log)
 	{
 		if (f < 10 || 32000 < f) {
-			write_log(log, LogLevel::Warning, "f: out of range: " + std::to_string(f));
+			write_log(log, LogLevel::Debug, "f: out of range: " + std::to_string(f));
 			return false;
 		}
 		if (c < 1 || f < c) {
-			write_log(log, LogLevel::Warning, "c: out of range: " + std::to_string(c));
+			write_log(log, LogLevel::Debug, "c: out of range: " + std::to_string(c));
 			return false;
 		}
 		if (q_ms < 1 || 1000 < q_ms) {
-			write_log(log, LogLevel::Warning, "q: out of range: " + std::to_string(q_ms));
+			write_log(log, LogLevel::Debug, "q: out of range: " + std::to_string(q_ms));
 			return false;
 		}
 		if (index & ~0xFFu) {
-			write_log(log, LogLevel::Warning, "i: out of range: " + std::to_string(index));
+			write_log(log, LogLevel::Debug, "i: out of range: " + std::to_string(index));
 			return false;
 		}
 		return true;
 	}
 
+	// Parses into a fresh payload and replaces this one only when every parameter parses and the values pass their
+	// range checks, so a rejected payload leaves the last valid one, valid included, as it was. A camera can see any
+	// QR code, so a malformed one logs no content.
 	bool decode(char *payload, const Logger &log)
 	{
-		valid = false;
+		QrPayload next;
 		char *saveptr;
 		char *param = tokenize(payload, ",", &saveptr);
 		while (param) {
-			if (!decode_kv(param))
+			if (!next.decode_kv(param)) {
+				write_log(log, LogLevel::Debug, "payload: malformed parameter");
 				return false;
+			}
 			param = tokenize(NULL, ",", &saveptr);
 		}
-		if (!check(log))
+		if (!next.check(log))
 			return false;
-		valid = true;
+		next.valid = true;
+		*this = next;
 		return true;
 	}
 

@@ -140,12 +140,12 @@ T35 → T37
 
 **Done when**:
 
-- [ ] A payload with `f=9`, `f=32001`, `c=0`, `c` above `f`, `q=0`, `q=1001`, `i=256` or no `i` returns false and leaves every field of an already-valid `QrPayload`, including `valid`, unchanged.
-- [ ] A payload with a malformed key (`ff=1`, `=1`) returns false with no state change.
-- [ ] A valid payload still decodes to the same values as before (`tests/detector/video-detector.cpp` existing cases pass).
-- [ ] The existing "rejects a value out of range and logs which one" case now expects `LogLevel::Debug`, and a new case asserts a rejected payload logs nothing at Warning.
-- [ ] Added doctest cases: "qr payload keeps a valid payload when a later one is rejected" (one section per rejected value above), "qr payload logs a rejected value at debug level". No existing case is deleted or loosened.
-- [ ] Quick gate passes.
+- [x] A payload with `f=9`, `f=32001`, `c=0`, `c` above `f`, `q=0`, `q=1001`, `i=256` or no `i` returns false and leaves every field of an already-valid `QrPayload`, including `valid`, unchanged. The fresh copy is default-constructed, not a copy of the current payload, so a payload with no `i` keeps the default `i` and fails its range check.
+- [x] A payload with a malformed key (`ff=1`, `=1`) returns false with no state change. It also logs `payload: malformed parameter` at Debug, without the payload's text (READ-23, READ-89).
+- [x] A valid payload still decodes to the same values as before (`tests/detector/video-detector.cpp` existing cases pass).
+- [x] The existing "rejects a value out of range and logs which one" case now expects `LogLevel::Debug`, and a new case asserts a rejected payload logs nothing at Warning.
+- [x] Added doctest cases: "qr payload keeps a valid payload when a later one is rejected" (one section per rejected value above), "qr payload logs a rejected value at debug level". No existing case is deleted or loosened.
+- [x] Quick gate passes. Test count: ran 26, which is 24 plus 2.
 
 **Tests**: unit
 **Gate**: quick
