@@ -1007,6 +1007,25 @@ TEST_CASE("session clears no pattern sound at stop, reset, start and another mic
 	CHECK(no_sound_at(h, 11000));
 }
 
+TEST_CASE("session counts the wait for pattern sound from start")
+{
+	Harness h;
+	start_measuring(h);
+	see_markers(h, 0, 4600);
+
+	// Shutdown leaves Measuring without the Stop that would start the wait over, so only Start can do it here.
+	h.session.shutdown();
+	REQUIRE(h.snap().state == SessionState::Stopped);
+	h.clock.now = 4700 * one_ms;
+	REQUIRE(h.session.start({30, 1}) == StartResult::Started);
+
+	// READ-42: the 5 s count from the first video marker after Start, not from the one at t = 0.
+	CHECK_FALSE(no_sound_at(h, 5000));
+	see_markers(h, 5000, 9800);
+	CHECK_FALSE(no_sound_at(h, 9999));
+	CHECK(no_sound_at(h, 10000));
+}
+
 TEST_CASE("session never reports no pattern sound while stopped or idle")
 {
 	Harness h;
