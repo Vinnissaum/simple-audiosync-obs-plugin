@@ -88,7 +88,7 @@ jobs:
           if [[ "${RUNNER_DEBUG}" ]]; then set -x; fi
 
           sudo apt-get update
-          sudo apt-get install --yes cmake ninja-build gcovr
+          sudo apt-get install --yes cmake ninja-build gcovr clang libclang-rt-18-dev
 
       - name: Build and Test Core 🧪
         run: |
@@ -117,6 +117,18 @@ jobs:
             echo "::notice title=Core line coverage::$(jq -r '"\(.line_percent)% (\(.line_covered) of \(.line_total) lines)"' coverage-summary.json)"
           fi
           exit "${status}"
+
+      - name: Fuzz QR Payload Parser 🎲
+        run: |
+          : Fuzz QR Payload Parser 🎲
+          if [[ "${RUNNER_DEBUG}" ]]; then set -x; fi
+
+          # A second build directory, because the fuzz target needs Clang and the sanitizers. libFuzzer exits non-zero on a
+          # crash, a hang past the timeout, or the target's abort on an accepted out-of-range value.
+          CC=clang CXX=clang++ cmake -S . -B build_fuzz -DCAMERA_SYNC_CORE_ONLY=ON -DCAMERA_SYNC_FUZZ=ON \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          cmake --build build_fuzz --target qr-payload-fuzz
+          build_fuzz/tests/qr-payload-fuzz -max_total_time=60 -timeout=10 tests/fuzz/corpus
 
   macos-build:
     name: Build for macOS 🍏

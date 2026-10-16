@@ -746,10 +746,10 @@ T35 → T37
 
 **Done when**:
 
-- [ ] The job installs `clang`, configures a second build directory with `CC=clang CXX=clang++ -DCAMERA_SYNC_CORE_ONLY=ON -DCAMERA_SYNC_FUZZ=ON`, and runs `qr-payload-fuzz -max_total_time=60 tests/fuzz/corpus`.
-- [ ] A crash, a hang or an out-of-range acceptance fails the job.
-- [ ] Verified once on a scratch branch that is never merged: the same broken range check as in T25 turns this step red.
-- [ ] CI gate passes with the fuzz step green.
+- [x] The job installs `clang`, configures a second build directory with `CC=clang CXX=clang++ -DCAMERA_SYNC_CORE_ONLY=ON -DCAMERA_SYNC_FUZZ=ON`, and runs `qr-payload-fuzz -max_total_time=60 tests/fuzz/corpus`. The step is `Fuzz QR Payload Parser` in the `core-build` job, after the coverage step. It also installs `libclang-rt-18-dev` (the libFuzzer runtime, a separate package on Ubuntu 24.04), builds `build_fuzz` as RelWithDebInfo, builds only the `qr-payload-fuzz` target and adds `-timeout=10`.
+- [x] A crash, a hang or an out-of-range acceptance fails the job. The step is a plain command, so libFuzzer's non-zero exit (a crash, `-timeout=10` expiring, or the target's `std::abort()`) fails it.
+- [ ] Verified once on a scratch branch that is never merged: the same broken range check as in T25 turns this step red. **Open:** the batch's authorisation covered pushes to `main` only, and the WSL machine has no Clang. The corpus replay's response to each broken check is recorded in T25; the fuzz step's own response waits for a scratch-branch run.
+- [x] CI gate passes with the fuzz step green. No test added: the `ctest --preset core -N` total stays 158. Check A: the bullets map to the workflow step above and the CI run (recorded in the batch report). Check C: no test was added or changed. Verdict: criteria covered by the CI step; the scratch-branch variant is open.
 
 **Tests**: none
 **Gate**: ci
