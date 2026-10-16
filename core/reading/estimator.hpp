@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <deque>
 #include <map>
+#include <mutex>
 #include <optional>
 #include <vector>
 
@@ -17,8 +18,9 @@ struct CameraRow {
 	SourceId id;
 	CameraState state = CameraState::Looking;
 	int64_t live_ms = 0;    // the latest sample by video time, rounded; valid when state is not Looking
-	int64_t reading_ms = 0; // valid when state is Stable
-	uint32_t samples = 0;   // samples in the window, at most five
+	int64_t reading_ms = 0;      // valid when state is Stable
+	uint32_t samples = 0;        // samples in the window, at most five
+	uint32_t samples_formed = 0; // every sample formed since the camera was added or cleared
 };
 
 // Every added camera's row as it was at one instant, sorted by id.
@@ -47,7 +49,7 @@ struct SampleResult {
 // samples by video time. A sample is the video marker's time minus the audio marker's, in ms: positive when the
 // camera's video is late. A camera whose five samples lie within one frame of each other is Stable, and its reading is
 // their median. It stays Stable, with its reading, until it is cleared: only a later window within one frame changes
-// the reading.
+// the reading. Camera threads, the mic's thread and the UI thread call it at once; one lock guards it all.
 class ReadingEstimator {
 public:
 	// The pattern whose markers are paired. A pair's markers carry the same index and lie less than half a wrap
@@ -97,6 +99,7 @@ private:
 	struct Camera {
 		std::deque<Marker> waiting; // video markers no audio marker has paired with yet
 		std::vector<Sample> window; // the five most recent samples, oldest video time first
+		uint32_t samples_formed = 0;
 		bool stable = false;
 		int64_t reading_ms = 0;
 	};
@@ -106,6 +109,7 @@ private:
 	// became Stable or its reading changed.
 	std::optional<int64_t> add_sample(Camera &camera, uint64_t video_ns, uint64_t audio_ns);
 
+	mutable std::mutex mutex_;
 	PatternParams pattern_;
 	double frame_interval_ms_ = 0;
 	std::map<SourceId, Camera> cameras_;

@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include <doctest/doctest.h>
 
+#include <atomic>
 #include <cmath>
+#include <condition_variable>
 #include <cstdint>
 #include <initializer_list>
+#include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "reading/estimator.hpp"
@@ -667,4 +671,161 @@ TEST_CASE("estimator returns each camera an audio marker makes Stable")
 	// An audio marker that changes no reading returns nothing.
 	estimator.on_video_marker("a", 31, audio_ns + cycle_ns + ms(100));
 	CHECK(estimator.on_audio_marker(31, audio_ns + cycle_ns).empty());
+}
+
+namespace {
+
+// Where the lock-step batches meet. C++17 has no std::barrier.
+class Barrier {
+public:
+	explicit Barrier(int count) : count_(count) {}
+
+	void arrive_and_wait()
+	{
+		std::unique_lock<std::mutex> lock(mutex_);
+		const int generation = generation_;
+		if (++waiting_ == count_) {
+			waiting_ = 0;
+			generation_++;
+			woken_.notify_all();
+			return;
+		}
+		woken_.wait(lock, [&] { return generation_ != generation; });
+	}
+
+private:
+	std::mutex mutex_;
+	std::condition_variable woken_;
+	const int count_;
+	int waiting_ = 0;
+	int generation_ = 0;
+};
+
+} // namespace
+
+TEST_CASE("estimator records every marker that four camera threads and the mic thread push")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.set_frame_interval_ms(1000.0 / 60);
+	const std::string cameras[] = {"cam0", "cam1", "cam2", "cam3"};
+	const uint64_t offsets_ms[] = {40, 80, 120, 160};
+	for (const std::string &camera : cameras)
+		estimator.add_camera(camera);
+
+	// 1,000 flashes in batches of 100: every thread pushes a batch, then waits for the others, so a video marker
+	// never waits for more than a batch and no audio marker it needs is dropped.
+	constexpr uint32_t flashes = 1000;
+	constexpr uint32_t batch = 100;
+	const uint64_t first_ns = ms(10000);
+	Barrier barrier(5);
+
+	std::vector<std::thread> threads;
+	for (size_t j = 0; j < 4; j++) {
+		threads.emplace_back([&, j] {
+			for (uint32_t k = 0; k < flashes; k++) {
+				const uint64_t audio_ns = first_ns + k * cycle_ns;
+				estimator.on_video_marker(cameras[j], k % 256, audio_ns + ms(offsets_ms[j]));
+				if ((k + 1) % batch == 0)
+					barrier.arrive_and_wait();
+			}
+		});
+	}
+	threads.emplace_back([&] {
+		for (uint32_t k = 0; k < flashes; k++) {
+			estimator.on_audio_marker(k % 256, first_ns + k * cycle_ns);
+			if ((k + 1) % batch == 0)
+				barrier.arrive_and_wait();
+		}
+	});
+	for (std::thread &thread : threads)
+		thread.join();
+
+	for (size_t j = 0; j < 4; j++) {
+		CAPTURE(cameras[j]);
+		const CameraRow camera = row(estimator, cameras[j]);
+		CHECK(camera.samples_formed == flashes);
+		CHECK(camera.state == CameraState::Stable);
+		CHECK(camera.reading_ms == int64_t(offsets_ms[j]));
+	}
+}
+
+TEST_CASE("estimator snapshots show each camera as it was at one instant while four threads push markers")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.set_frame_interval_ms(1000.0 / 60);
+
+	// Cameras 0 and 1 see steady samples and turn Stable. Cameras 2 and 3 alternate 60 ms apart and stay Settling.
+	// Every 30 flashes each camera is cleared and then sees five flashes the mic does not hear, so it is Looking
+	// for a while. Each camera's times lie 1,000 s from the others', so no camera pairs with another's audio
+	// markers.
+	const std::string cameras[] = {"cam0", "cam1", "cam2", "cam3"};
+	const uint64_t offsets_ms[] = {40, 80, 120, 160};
+	const bool steady[] = {true, true, false, false};
+	for (const std::string &camera : cameras)
+		estimator.add_camera(camera);
+
+	std::atomic<bool> stop{false};
+	std::atomic<int> started{0};
+	std::vector<std::thread> writers;
+	for (size_t j = 0; j < 4; j++) {
+		writers.emplace_back([&, j] {
+			for (uint32_t k = 0; !stop; k++) {
+				const uint64_t audio_ns = ms(10000) + j * ms(1000000) + k * cycle_ns;
+				const uint64_t jitter_ms = steady[j] || k % 2 ? 0 : 60;
+				const uint64_t video_ns = audio_ns + ms(offsets_ms[j] + jitter_ms);
+				if (k % 30 == 0)
+					estimator.clear_camera(cameras[j]);
+				if (k % 30 >= 5)
+					estimator.on_audio_marker(k % 256, audio_ns);
+				estimator.on_video_marker(cameras[j], k % 256, video_ns);
+				if (k == 30)
+					started++;
+			}
+		});
+	}
+	while (started < 4)
+		std::this_thread::yield();
+
+	// At least 10,000 snapshots, and more until each state has been seen.
+	uint32_t taken = 0, looking = 0, settling = 0, stable = 0, mixed = 0;
+	CameraRow first_mixed;
+	while (taken < 10000 || ((!looking || !settling || !stable) && taken < 1000000)) {
+		for (const CameraRow &camera : estimator.snapshot().cameras) {
+			const size_t j = size_t(camera.id[3] - '0');
+			const bool reads_offset = steady[j] && camera.reading_ms == int64_t(offsets_ms[j]);
+			bool one_instant = camera.samples <= camera.samples_formed;
+			switch (camera.state) {
+			case CameraState::Looking:
+				looking++;
+				one_instant = one_instant && camera.samples == 0 && camera.samples_formed == 0;
+				break;
+			case CameraState::Settling:
+				settling++;
+				one_instant = one_instant && camera.samples >= 1 && camera.samples <= 5;
+				break;
+			case CameraState::Stable:
+				stable++;
+				one_instant = one_instant && camera.samples == 5 && reads_offset;
+				break;
+			}
+			if (!one_instant && mixed++ == 0)
+				first_mixed = camera;
+		}
+		taken++;
+	}
+	stop = true;
+	for (std::thread &writer : writers)
+		writer.join();
+
+	CAPTURE(first_mixed.id);
+	CAPTURE(int(first_mixed.state));
+	CAPTURE(first_mixed.samples);
+	CAPTURE(first_mixed.reading_ms);
+	CHECK(taken >= 10000);
+	CHECK(mixed == 0);
+	CHECK(looking > 0);
+	CHECK(settling > 0);
+	CHECK(stable > 0);
 }

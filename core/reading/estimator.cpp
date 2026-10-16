@@ -29,26 +29,31 @@ template<typename T> void push_capped(std::deque<T> &list, T item)
 
 void ReadingEstimator::set_pattern(const PatternParams &pattern)
 {
+	std::lock_guard<std::mutex> lock(mutex_);
 	pattern_ = pattern;
 }
 
 void ReadingEstimator::set_frame_interval_ms(double ms)
 {
+	std::lock_guard<std::mutex> lock(mutex_);
 	frame_interval_ms_ = ms;
 }
 
 void ReadingEstimator::add_camera(const SourceId &camera)
 {
+	std::lock_guard<std::mutex> lock(mutex_);
 	cameras_.emplace(camera, Camera{});
 }
 
 void ReadingEstimator::remove_camera(const SourceId &camera)
 {
+	std::lock_guard<std::mutex> lock(mutex_);
 	cameras_.erase(camera);
 }
 
 void ReadingEstimator::clear_camera(const SourceId &camera)
 {
+	std::lock_guard<std::mutex> lock(mutex_);
 	auto found = cameras_.find(camera);
 	if (found != cameras_.end())
 		found->second = Camera{};
@@ -56,6 +61,7 @@ void ReadingEstimator::clear_camera(const SourceId &camera)
 
 void ReadingEstimator::clear()
 {
+	std::lock_guard<std::mutex> lock(mutex_);
 	for (auto &entry : cameras_)
 		entry.second = Camera{};
 	audio_.clear();
@@ -63,6 +69,7 @@ void ReadingEstimator::clear()
 
 SampleResult ReadingEstimator::on_video_marker(const SourceId &id, uint32_t index, uint64_t time_ns)
 {
+	std::lock_guard<std::mutex> lock(mutex_);
 	SampleResult result;
 	auto found = cameras_.find(id);
 	if (found == cameras_.end())
@@ -101,6 +108,7 @@ SampleResult ReadingEstimator::on_video_marker(const SourceId &id, uint32_t inde
 
 std::vector<StableChange> ReadingEstimator::on_audio_marker(uint32_t index, uint64_t time_ns)
 {
+	std::lock_guard<std::mutex> lock(mutex_);
 	std::vector<StableChange> changes;
 	AudioEntry entry{{index, time_ns}, {}};
 
@@ -133,11 +141,13 @@ std::vector<StableChange> ReadingEstimator::on_audio_marker(uint32_t index, uint
 
 EstimatorSnapshot ReadingEstimator::snapshot() const
 {
+	std::lock_guard<std::mutex> lock(mutex_);
 	EstimatorSnapshot snapshot;
 	for (const auto &[id, camera] : cameras_) {
 		CameraRow row;
 		row.id = id;
 		row.samples = static_cast<uint32_t>(camera.window.size());
+		row.samples_formed = camera.samples_formed;
 		if (!camera.window.empty()) {
 			row.state = camera.stable ? CameraState::Stable : CameraState::Settling;
 			row.live_ms = round_half_away(camera.window.back().ms);
@@ -155,6 +165,8 @@ bool ReadingEstimator::pairs(const Marker &video, const Marker &audio) const
 
 std::optional<int64_t> ReadingEstimator::add_sample(Camera &camera, uint64_t video_ns, uint64_t audio_ns)
 {
+	camera.samples_formed++;
+
 	// Each difference is taken in the order that keeps it unsigned.
 	const double ms = video_ns >= audio_ns ? (video_ns - audio_ns) / 1e6 : -((audio_ns - video_ns) / 1e6);
 

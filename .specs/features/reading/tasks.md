@@ -243,10 +243,10 @@ T35 → T37
 
 **Done when**:
 
-- [ ] Four camera threads push 1,000 video markers each while one audio thread pushes the matching audio markers, in lock-step batches of 100 so no list reaches its cap; at the end every camera's total formed samples is 1,000 and its reading equals the injected offset (READ-07). The estimator exposes a cumulative `samples_formed` per camera for this.
-- [ ] While four writers run, 10,000 snapshots each satisfy: Looking ⇒ 0 samples in the window; Stable ⇒ 5 samples and a reading; no row mixes a state with another instant's count (READ-08).
-- [ ] The two tests also pass once built with `-fsanitize=thread` with g++ 13 on WSL (a one-time local run, recorded in the commit body).
-- [ ] Added doctest cases: 2. Quick gate passes.
+- [x] Four camera threads push 1,000 video markers each while one audio thread pushes the matching audio markers, in lock-step batches of 100 so no list reaches its cap; at the end every camera's total formed samples is 1,000 and its reading equals the injected offset (READ-07). The estimator exposes a cumulative `samples_formed` per camera for this. No video list reaches its cap. The audio list keeps paired markers (T3), so it fills to 256 from the third batch on, but it drops only markers from two batches back, which no camera still needs.
+- [x] While four writers run, 10,000 snapshots each satisfy: Looking ⇒ 0 samples in the window; Stable ⇒ 5 samples and a reading; no row mixes a state with another instant's count (READ-08). Each writer drives one camera through Looking, Settling and Stable. The reader takes at least 10,000 snapshots, keeps going until it has seen all three states, and also checks Settling ⇒ 1 to 5 samples and samples ≤ `samples_formed`.
+- [x] The two tests also pass once built with `-fsanitize=thread` with g++ 13 on WSL (a one-time local run, recorded in the commit body).
+- [x] Added doctest cases: 2. Quick gate passes. Test count: ran 56, which is 54 plus 2.
 
 **Tests**: unit
 **Gate**: quick
