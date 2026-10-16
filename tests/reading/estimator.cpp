@@ -829,3 +829,131 @@ TEST_CASE("estimator snapshots show each camera as it was at one instant while f
 	CHECK(settling > 0);
 	CHECK(stable > 0);
 }
+
+TEST_CASE("estimator counts each camera's video markers received and the indexes missed between them")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.add_camera("a");
+	estimator.add_camera("b");
+
+	estimator.on_video_marker("a", 3, ms(1000));
+	estimator.on_video_marker("a", 4, ms(1000) + cycle_ns);
+	estimator.on_video_marker("a", 7, ms(1000) + 4 * cycle_ns);
+	estimator.on_video_marker("b", 10, ms(2000));
+	estimator.on_video_marker("b", 11, ms(2000) + cycle_ns);
+
+	CHECK(row(estimator, "a").received == 3);
+	CHECK(row(estimator, "a").missed == 2);
+	CHECK(row(estimator, "b").received == 2);
+	CHECK(row(estimator, "b").missed == 0);
+}
+
+TEST_CASE("estimator counts missed indexes across the wrap")
+{
+	ReadingEstimator estimator;
+	estimator.add_camera("cam");
+	std::vector<uint32_t> indexes;
+	uint32_t missed = 0;
+
+	SUBCASE("254, 255, 0, 1")
+	{
+		estimator.set_pattern(pattern);
+		indexes = {254, 255, 0, 1};
+		missed = 0;
+	}
+	SUBCASE("255 then 1")
+	{
+		estimator.set_pattern(pattern);
+		indexes = {255, 1};
+		missed = 1;
+	}
+	SUBCASE("14 then 1 with index_max 16")
+	{
+		estimator.set_pattern(PatternParams{884, 2, 66, 16});
+		indexes = {14, 1};
+		missed = 2;
+	}
+
+	uint64_t time_ns = ms(1000);
+	for (uint32_t index : indexes) {
+		estimator.on_video_marker("cam", index, time_ns);
+		time_ns += cycle_ns;
+	}
+	CHECK(row(estimator, "cam").received == indexes.size());
+	CHECK(row(estimator, "cam").missed == missed);
+}
+
+TEST_CASE("estimator counts a repeated index as received and not missed")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.add_camera("cam");
+
+	estimator.on_video_marker("cam", 5, ms(1000));
+	estimator.on_video_marker("cam", 5, ms(1010));
+	estimator.on_video_marker("cam", 6, ms(1000) + cycle_ns);
+	CHECK(row(estimator, "cam").received == 3);
+	CHECK(row(estimator, "cam").missed == 0);
+
+	estimator.on_video_marker("cam", 8, ms(1000) + 3 * cycle_ns);
+	CHECK(row(estimator, "cam").received == 4);
+	CHECK(row(estimator, "cam").missed == 1);
+}
+
+TEST_CASE("estimator zeroes the counters on clear, clear_camera and reset_counters")
+{
+	ReadingEstimator estimator;
+	estimator.set_pattern(pattern);
+	estimator.set_frame_interval_ms(f_30fps);
+	estimator.add_camera("a");
+	estimator.add_camera("b");
+
+	// Camera a turns Stable at 100 after indexes 0 to 4 and 9: received 6, missed 4. Camera b sees 0 and 2.
+	feed_all(estimator, "a", 0, ms(10000), {100, 100, 100, 100, 100});
+	estimator.on_video_marker("a", 9, ms(10000) + 9 * cycle_ns);
+	estimator.on_video_marker("b", 0, ms(20000));
+	estimator.on_video_marker("b", 2, ms(20000) + 2 * cycle_ns);
+	REQUIRE(row(estimator, "a").received == 6);
+	REQUIRE(row(estimator, "a").missed == 4);
+	REQUIRE(row(estimator, "b").missed == 1);
+
+	SUBCASE("reset_counters keeps samples and readings")
+	{
+		estimator.reset_counters();
+		CHECK(row(estimator, "a").received == 0);
+		CHECK(row(estimator, "a").missed == 0);
+		CHECK(row(estimator, "b").received == 0);
+		CHECK(row(estimator, "b").missed == 0);
+		CHECK(row(estimator, "a").state == CameraState::Stable);
+		CHECK(row(estimator, "a").reading_ms == 100);
+		CHECK(row(estimator, "a").samples == 5);
+
+		// The first marker after it counts no gap from the marker before it.
+		estimator.on_video_marker("a", 20, ms(10000) + 20 * cycle_ns);
+		CHECK(row(estimator, "a").received == 1);
+		CHECK(row(estimator, "a").missed == 0);
+	}
+	SUBCASE("clear_camera zeroes one camera")
+	{
+		estimator.clear_camera("a");
+		CHECK(row(estimator, "a").received == 0);
+		CHECK(row(estimator, "a").missed == 0);
+		CHECK(row(estimator, "b").received == 2);
+		CHECK(row(estimator, "b").missed == 1);
+
+		estimator.on_video_marker("a", 20, ms(10000) + 20 * cycle_ns);
+		CHECK(row(estimator, "a").missed == 0);
+	}
+	SUBCASE("clear zeroes every camera")
+	{
+		estimator.clear();
+		CHECK(row(estimator, "a").received == 0);
+		CHECK(row(estimator, "a").missed == 0);
+		CHECK(row(estimator, "b").received == 0);
+		CHECK(row(estimator, "b").missed == 0);
+
+		estimator.on_video_marker("b", 20, ms(20000) + 20 * cycle_ns);
+		CHECK(row(estimator, "b").missed == 0);
+	}
+}

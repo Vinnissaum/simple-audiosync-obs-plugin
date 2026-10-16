@@ -21,6 +21,8 @@ struct CameraRow {
 	int64_t reading_ms = 0;      // valid when state is Stable
 	uint32_t samples = 0;        // samples in the window, at most five
 	uint32_t samples_formed = 0; // every sample formed since the camera was added or cleared
+	uint32_t received = 0;       // video markers since the counters were last zeroed
+	uint32_t missed = 0;         // indexes skipped between consecutive video markers, across the wrap
 };
 
 // Every added camera's row as it was at one instant, sorted by id.
@@ -67,6 +69,9 @@ public:
 	// Drops every camera's samples, reading and unpaired video markers, and every audio marker. The cameras stay
 	// added.
 	void clear();
+	// Zeroes every camera's received and missed counts, as at Start. Samples and readings stay. Clearing a camera
+	// zeroes them too.
+	void reset_counters();
 
 	// A flash of the pattern, seen by a camera or heard by the mic, with its marker index and time in ns. A video
 	// marker of a camera that is not added is ignored. An audio marker can complete a pair for several cameras, so
@@ -100,6 +105,9 @@ private:
 		std::deque<Marker> waiting; // video markers no audio marker has paired with yet
 		std::vector<Sample> window; // the five most recent samples, oldest video time first
 		uint32_t samples_formed = 0;
+		uint32_t received = 0;
+		uint32_t missed = 0;
+		std::optional<uint32_t> last_index;
 		bool stable = false;
 		int64_t reading_ms = 0;
 	};

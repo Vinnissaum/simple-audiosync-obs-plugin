@@ -265,12 +265,12 @@ T35 → T37
 
 **Done when**:
 
-- [ ] Indexes 3, 4, 7 give received 3, missed 2.
-- [ ] 254, 255, 0, 1 give missed 0 (wrap); 255 then 1 gives missed 1.
-- [ ] A repeated index adds to received and not to missed.
-- [ ] With `index_max` 16, indexes 14 then 1 give missed 2.
-- [ ] `clear()` and `clear_camera` zero the counters; `reset_counters()` zeroes them and keeps readings (for Start, used in T14).
-- [ ] The snapshot carries `received` and `missed`. Added doctest cases: 4. Quick gate passes.
+- [x] Indexes 3, 4, 7 give received 3, missed 2.
+- [x] 254, 255, 0, 1 give missed 0 (wrap); 255 then 1 gives missed 1.
+- [x] A repeated index adds to received and not to missed.
+- [x] With `index_max` 16, indexes 14 then 1 give missed 2.
+- [x] `clear()` and `clear_camera` zero the counters; `reset_counters()` zeroes them and keeps readings (for Start, used in T14). Each also forgets the last index, so the first marker afterwards counts no gap.
+- [x] The snapshot carries `received` and `missed`. Added doctest cases: 4. Quick gate passes. Test count: ran 60, which is 56 plus 4.
 
 **Tests**: unit
 **Gate**: quick

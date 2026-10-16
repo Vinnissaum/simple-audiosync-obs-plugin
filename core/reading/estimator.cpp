@@ -67,6 +67,16 @@ void ReadingEstimator::clear()
 	audio_.clear();
 }
 
+void ReadingEstimator::reset_counters()
+{
+	std::lock_guard<std::mutex> lock(mutex_);
+	for (auto &entry : cameras_) {
+		entry.second.received = 0;
+		entry.second.missed = 0;
+		entry.second.last_index.reset();
+	}
+}
+
 SampleResult ReadingEstimator::on_video_marker(const SourceId &id, uint32_t index, uint64_t time_ns)
 {
 	std::lock_guard<std::mutex> lock(mutex_);
@@ -76,6 +86,13 @@ SampleResult ReadingEstimator::on_video_marker(const SourceId &id, uint32_t inde
 		return result;
 	Camera &camera = found->second;
 	const Marker video{index, time_ns};
+
+	// The indexes skipped since the camera's last marker, counted across the wrap. A repeated index skips none.
+	camera.received++;
+	const uint32_t index_max = pattern_.index_max;
+	if (camera.last_index && index != *camera.last_index && index_max)
+		camera.missed += (index + index_max - *camera.last_index - 1) % index_max;
+	camera.last_index = index;
 
 	// The nearest audio marker of the index that this camera has not paired with yet.
 	AudioEntry *nearest = nullptr;
@@ -148,6 +165,8 @@ EstimatorSnapshot ReadingEstimator::snapshot() const
 		row.id = id;
 		row.samples = static_cast<uint32_t>(camera.window.size());
 		row.samples_formed = camera.samples_formed;
+		row.received = camera.received;
+		row.missed = camera.missed;
 		if (!camera.window.empty()) {
 			row.state = camera.stable ? CameraState::Stable : CameraState::Settling;
 			row.live_ms = round_half_away(camera.window.back().ms);
