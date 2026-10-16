@@ -291,12 +291,12 @@ T35 → T37
 
 **Done when**:
 
-- [ ] `FrameSink::on_frame(const VideoFrame &, width, height, LumaFormat)` is the only entry; the first frame calls `detector.start`.
-- [ ] Feeding `tests/fixtures/qr-frame.pgm` makes the detector's `qr_data()` valid with index 37; feeding it again after a frame of another size restarts the detector without a crash and still decodes.
-- [ ] A frame with width 0 or a null pointer is dropped with a Warning, and `last_frame_ns` does not move.
-- [ ] `last_frame_ns()` starts at the clock reading at construction and moves to the clock reading on each accepted frame (a fake clock).
-- [ ] Two pipelines built together share no state: a frame to one leaves the other's `qr_data()` invalid.
-- [ ] Added doctest cases: 5, in `tests/reading/camera-pipeline.cpp`. Quick gate passes.
+- [x] `FrameSink::on_frame(const VideoFrame &, width, height, LumaFormat)` is the only entry; the first frame calls `detector.start`. `Clock` and `FrameSink` are declared in `camera-pipeline.hpp`; `qr_data()` and `last_frame_ns()` only read.
+- [x] Feeding `tests/fixtures/qr-frame.pgm` makes the detector's `qr_data()` valid with index 37; feeding it again after a frame of another size restarts the detector without a crash and still decodes. A format change (Luma8 to Green32) restarts it too.
+- [x] A frame with width 0 or a null pointer is dropped with a Warning, and `last_frame_ns` does not move. A height of 0 is dropped the same way. The spec gives no text; the line names the width and height.
+- [x] `last_frame_ns()` starts at the clock reading at construction and moves to the clock reading on each accepted frame (a fake clock).
+- [x] Two pipelines built together share no state: a frame to one leaves the other's `qr_data()` invalid.
+- [x] Added doctest cases: 5, in `tests/reading/camera-pipeline.cpp`. Quick gate passes. Test count: ran 65, which is 60 plus 5.
 
 **Tests**: unit
 **Gate**: quick

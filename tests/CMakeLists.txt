@@ -13,6 +13,7 @@ target_sources(
     detector/audio-detector.cpp
     reading/pattern.cpp
     reading/estimator.cpp
+    reading/camera-pipeline.cpp
 )
 
 target_compile_definitions(camera-sync-tests PRIVATE CAMERA_SYNC_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
