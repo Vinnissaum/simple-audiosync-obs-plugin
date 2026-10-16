@@ -405,14 +405,14 @@ T35 → T37
 
 **Done when**:
 
-- [ ] `camera_list` returns async-video sources and `mic_list` audio sources, each sorted by name ignoring case ("cam b" before "Cam C") (READ-49).
-- [ ] With no saved selection, every async-video source with `in_program` is ticked, including the ones the adapter marked from nested scenes and groups (the adapter sets the flag; this test sets it) (READ-50).
-- [ ] With no saved selection, the mic is chosen only if exactly one source has audio; zero or two leave it unset; a camera with its own audio counts toward the two (READ-51).
-- [ ] A saved selection of version 1 ticks only the UUIDs that exist, preselects nothing, and a version 1 selection with no surviving UUID still suppresses preselection (READ-52).
-- [ ] Version 0, 2 and an absent selection all preselect (READ-53).
-- [ ] `mic_list` leaves out ticked cameras and `camera_list` leaves out the chosen mic (READ-60).
-- [ ] `to_saved(Choice)` returns version 1 with the camera UUIDs and the mic or null (READ-54).
-- [ ] Added doctest cases: at least 9, in `tests/selection/selection-policy.cpp`. Quick gate passes.
+- [x] `camera_list` returns async-video sources and `mic_list` audio sources, each sorted by name ignoring case ("cam b" before "Cam C") (READ-49). Case is folded for ASCII letters only; names equal but for case fall back to the exact name, then the UUID.
+- [x] With no saved selection, every async-video source with `in_program` is ticked, including the ones the adapter marked from nested scenes and groups (the adapter sets the flag; this test sets it) (READ-50).
+- [x] With no saved selection, the mic is chosen only if exactly one source has audio; zero or two leave it unset; a camera with its own audio counts toward the two (READ-51). When that one source is a camera the same call ticks, the camera wins and the mic stays unset, so the two lists stay disjoint (READ-60). The spec does not say which wins; this needs the maintainer's confirmation.
+- [x] A saved selection of version 1 ticks only the UUIDs that exist, preselects nothing, and a version 1 selection with no surviving UUID still suppresses preselection (READ-52).
+- [x] Version 0, 2 and an absent selection all preselect (READ-53).
+- [x] `mic_list` leaves out ticked cameras and `camera_list` leaves out the chosen mic (READ-60).
+- [x] `to_saved(Choice)` returns version 1 with the camera UUIDs and the mic or null (READ-54).
+- [x] Added doctest cases: at least 9, in `tests/selection/selection-policy.cpp`. Quick gate passes. Added 11. Test count: ran 85, which is 74 plus 11.
 
 **Tests**: unit
 **Gate**: quick

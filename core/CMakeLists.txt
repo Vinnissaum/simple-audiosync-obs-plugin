@@ -33,6 +33,7 @@ target_sources(
     reading/estimator.cpp
     reading/camera-pipeline.cpp
     reading/mic-pipeline.cpp
+    selection/selection-policy.cpp
     detector/video-detector.cpp
     detector/audio-detector.cpp
 )
