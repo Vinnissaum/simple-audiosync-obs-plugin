@@ -58,4 +58,74 @@ std::string reading_stable(std::string_view camera, int64_t reading_ms, int64_t 
 	       " spread_ms=" + std::to_string(spread_ms);
 }
 
+std::string filter_value(const FilterState &filter)
+{
+	if (!filter.present)
+		return "none";
+	return std::to_string(filter.delay_ms) + (filter.enabled ? "" : "(off)");
+}
+
+std::string alignment_plan(std::string_view prefix, const std::vector<PlanEntry> &cameras, const PlanEntry &mic)
+{
+	std::string text = std::string(prefix) + ".plan";
+	for (const PlanEntry &camera : cameras)
+		text += " camera=" + quote(camera.name) + " delay_ms=" + camera.from + "->" + camera.to;
+	return text + " mic=" + quote(mic.name) + " sync_offset_ms=" + mic.from + "->" + mic.to;
+}
+
+std::string alignment_ok(std::string_view prefix, size_t written, size_t skipped, int64_t duration_ms)
+{
+	return std::string(prefix) + ".result ok written=" + std::to_string(written) +
+	       " skipped=" + std::to_string(skipped) + " duration_ms=" + std::to_string(duration_ms);
+}
+
+std::string alignment_failed(std::string_view prefix, bool mic, std::string_view name, bool restored)
+{
+	return std::string(prefix) + ".result failed step=" + (mic ? "mic:" : "camera:") + quote(name) +
+	       " restored=" + (restored ? "yes" : "no");
+}
+
+std::string restore_failed_camera(std::string_view name, const FilterState &intended, const FilterState &actual)
+{
+	return "restore.failed camera=" + quote(name) + " intended_ms=" + filter_value(intended) +
+	       " actual_ms=" + filter_value(actual);
+}
+
+std::string restore_failed_mic(std::string_view name, int64_t intended_ns, int64_t actual_ns)
+{
+	return "restore.failed mic=" + quote(name) + " intended_ns=" + std::to_string(intended_ns) +
+	       " actual_ns=" + std::to_string(actual_ns);
+}
+
+std::string alignment_refused_waiting(std::string_view prefix, std::string_view camera)
+{
+	return std::string(prefix) + ".refused reason=waiting camera=" + quote(camera);
+}
+
+std::string alignment_refused_source_gone(std::string_view prefix, std::string_view source_id)
+{
+	return std::string(prefix) + ".refused reason=source_gone source=" + quote(source_id);
+}
+
+std::string alignment_refused_no_delay_filter(std::string_view prefix)
+{
+	return std::string(prefix) + ".refused reason=no_delay_filter";
+}
+
+std::string alignment_refused_over_limit(std::string_view prefix, std::string_view source, int64_t value_ms)
+{
+	return std::string(prefix) + ".refused reason=over_limit source=" + quote(source) +
+	       " value_ms=" + std::to_string(value_ms);
+}
+
+std::string alignment_refused_changed(std::string_view prefix)
+{
+	return std::string(prefix) + ".refused reason=changed";
+}
+
+std::string alignment_event(std::string_view prefix, std::string_view event)
+{
+	return std::string(prefix) + "." + std::string(event);
+}
+
 } // namespace camera_sync
