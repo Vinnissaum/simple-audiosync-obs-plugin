@@ -376,7 +376,10 @@ Proof: `ctest --preset core -R "^the last result lasts until the next result, re
 - **Settled mid-build:** none. The plan was approved with "approved, keep going"; the two questions
   asked with it, pushing to `origin/main` for CI and raising `Mutations` to 5, were not answered, so
   the build stopped at local commits and `Mutations` stays 3. 2026-10-28, user: "yes, push" - pushed
-  `6c1142f..de0f614` to `origin/main` for CI.
+  `6c1142f..de0f614` to `origin/main` for CI. CI then failed Check Formatting on seven files and
+  Build for Windows on Reading's "estimator snapshots show each camera as it was at one instant while
+  four threads push markers", whose files this feature does not touch; it passed 300 runs in a row on
+  WSL. User, asked to push the formatting fix: "ok, keep going".
 - **Dispatched:** none. The Verifier waits until the feature is held whole: the `walk - CI` proofs
   need a push and the `walk - rig` proofs need the rig.
 - **Boundary:** every check with a `ctest` or command proof is green at `09a7b8f`: C1-C20, C21's
@@ -395,6 +398,7 @@ Proof: `ctest --preset core -R "^the last result lasts until the next result, re
   `g++ -std=c++17 -fsyntax-only -Wall -Wextra -Werror` against OBS 30.0.2's headers (the archive
   `buildspec.json` pins, hash checked, unpacked in the session's scratchpad), and OBS's
   `async-delay-filter.c` passes `gcc -fsyntax-only`; nothing links or runs them before CI. The
-  controller and the dock are not compiled here at all: there are no Qt headers. clang-format 19 and
-  gersemi are not installed, so formatting was matched by hand to `.clang-format` and `.gersemirc`;
+  controller and the dock are not compiled here at all: there are no Qt headers. clang-format 19.1.1
+  now runs from Ubuntu's packages unpacked in the scratchpad (no sudo), and every C and C++ file in
+  `src/`, `core/` and `tests/` outside `core/detector/` passes it; gersemi is still matched by hand.
   CI's Check Formatting is C87.
