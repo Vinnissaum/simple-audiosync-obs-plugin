@@ -1313,6 +1313,51 @@ TEST_CASE("session clears a camera's reading when its filters change")
 	CHECK(h.row("cam-b").live_ms == 40);
 }
 
+TEST_CASE("session clear_readings keeps the pattern and the session state")
+{
+	Harness h;
+	start_measuring(h);
+	read_both(h);
+
+	// Apply and Undo clear every reading: each camera is Looking again with its tap, and measuring goes on.
+	h.session.clear_readings();
+	CHECK(h.snap().state == SessionState::Measuring);
+	CHECK(h.factory.live == std::multiset<std::string>{"mic:mic", "camera:cam-a", "camera:cam-b"});
+	CHECK(h.row("cam-a").state == CameraState::Looking);
+	CHECK(h.row("cam-a").samples == 0);
+	CHECK(h.row("cam-b").state == CameraState::Looking);
+	CHECK(h.row("cam-b").samples == 0);
+
+	// The pattern stays: another pattern's markers are still ignored, and the session's own form a sample at once.
+	h.sample("cam-b", 41, 6 * one_s, 30 * one_ms, PatternParams{1000, 2, 66, 256});
+	CHECK(h.row("cam-b").state == CameraState::Looking);
+	h.sample("cam-b", 42, 7 * one_s, 30 * one_ms);
+	CHECK(h.row("cam-b").state == CameraState::Settling);
+	CHECK(h.row("cam-b").live_ms == 30);
+
+	// A stopped session stays stopped.
+	h.session.stop();
+	h.session.clear_readings();
+	CHECK(h.snap().state == SessionState::Stopped);
+	CHECK(h.row("cam-b").state == CameraState::Looking);
+}
+
+TEST_CASE("session snapshot reports the frame interval read at the last start")
+{
+	Harness h;
+	CHECK(h.snap().frame_interval_ms == 0);
+
+	h.session.set_selection({"cam-a"}, "mic");
+	REQUIRE(h.session.start({30, 1}) == StartResult::Started);
+	CHECK(h.snap().frame_interval_ms == doctest::Approx(33.333).epsilon(0.00003));
+
+	h.session.stop();
+	CHECK(h.snap().frame_interval_ms == doctest::Approx(33.333).epsilon(0.00003));
+
+	REQUIRE(h.session.start({60000, 1001}) == StartResult::Started);
+	CHECK(h.snap().frame_interval_ms == doctest::Approx(16.683).epsilon(0.00006));
+}
+
 TEST_CASE("session clears every reading when the mic's sync offset changes and keeps the pattern")
 {
 	Harness h;

@@ -106,7 +106,8 @@ StartResult Session::start(FrameRate rate)
 	for (const SourceId &camera : cameras_)
 		tap_camera(camera);
 
-	estimator_.set_frame_interval_ms(frame_interval_ms(rate.fps_num, rate.fps_den));
+	frame_interval_ms_ = frame_interval_ms(rate.fps_num, rate.fps_den);
+	estimator_.set_frame_interval_ms(frame_interval_ms_);
 	estimator_.reset_counters();
 	restart_no_sound_wait();
 	state_ = SessionState::Measuring;
@@ -195,7 +196,12 @@ void Session::on_camera_filters_changed(const SourceId &camera)
 
 void Session::on_mic_sync_offset_changed()
 {
-	// Every audio marker went with the readings: each was stamped with the old offset. The pattern stays.
+	// Every audio marker goes with the readings: each was stamped with the old offset.
+	clear_readings();
+}
+
+void Session::clear_readings()
+{
 	std::lock_guard<std::mutex> lock(mutex_);
 	estimator_.clear();
 }
@@ -293,6 +299,7 @@ SessionSnapshot Session::snapshot() const
 	snapshot.mic = mic_;
 	snapshot.mic_tap_failed = mic_tap_failed_;
 	snapshot.no_pattern_sound = no_pattern_sound(clock_());
+	snapshot.frame_interval_ms = frame_interval_ms_;
 	return snapshot;
 }
 

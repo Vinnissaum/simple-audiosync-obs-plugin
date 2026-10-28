@@ -59,7 +59,8 @@ struct SessionSnapshot {
 	bool mic_tap_failed = false; // the last Start could not listen to the mic
 	// While measuring: 5 s have passed since the first video marker the mic has not answered, and video markers still
 	// arrive.
-	bool no_pattern_sound = false;
+	bool no_pattern_sound = false;	// The frame interval F read at the last Start, in ms; 0 before any Start.
+	double frame_interval_ms = 0;
 };
 
 // The measuring session: the selection, the pattern, the taps and the readings. Its control methods run on the UI
@@ -101,6 +102,9 @@ public:
 	void on_camera_filters_changed(const SourceId &camera);
 	// The mic's Sync Offset changed: no reading holds.
 	void on_mic_sync_offset_changed();
+	// Every camera goes back to Looking. The pattern, the taps and the session's state stay, as after an Apply or an
+	// Undo, whose writes leave no reading standing.
+	void clear_readings();
 
 	// Called on the UI thread about ten times a second. While measuring, a ticked camera whose tap delivered no frame
 	// for 2 s is dropped as on_camera_removed drops it.
@@ -154,6 +158,7 @@ private:
 	std::vector<SourceId> cameras_;
 	std::optional<SourceId> mic_;
 	bool mic_tap_failed_ = false;
+	double frame_interval_ms_ = 0;
 	std::optional<PatternParams> pattern_;
 	std::optional<uint64_t> unanswered_since_; // the first video marker since the last audio marker, or Start
 	uint64_t last_video_ns_ = 0;
