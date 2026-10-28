@@ -13,6 +13,7 @@
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QString>
@@ -52,6 +53,7 @@ public:
 	explicit CameraSyncDock(camera_sync::Controller &controller);
 
 	void render(const camera_sync::DockView &view) override;
+	bool confirm(const std::string &question, const std::string &detail) override;
 
 private:
 	void render_cameras(const std::vector<camera_sync::CameraRowView> &rows, bool details);
@@ -62,6 +64,8 @@ private:
 	QComboBox *mics_;
 	QPushButton *start_;
 	QPushButton *reset_;
+	QPushButton *apply_;
+	QPushButton *undo_;
 	QCheckBox *details_;
 	QLabel *message_;
 };
@@ -72,6 +76,8 @@ CameraSyncDock::CameraSyncDock(camera_sync::Controller &controller)
 	  mics_(new QComboBox(this)),
 	  start_(new QPushButton(this)),
 	  reset_(new QPushButton(text(camera_sync::strings::button_reset), this)),
+	  apply_(new QPushButton(text(camera_sync::strings::button_apply), this)),
+	  undo_(new QPushButton(text(camera_sync::strings::button_undo), this)),
 	  details_(new QCheckBox(text(camera_sync::strings::label_details), this)),
 	  message_(new QLabel(this))
 {
@@ -98,6 +104,8 @@ CameraSyncDock::CameraSyncDock(camera_sync::Controller &controller)
 	auto *buttons = new QHBoxLayout();
 	buttons->addWidget(start_);
 	buttons->addWidget(reset_);
+	buttons->addWidget(apply_);
+	buttons->addWidget(undo_);
 	buttons->addStretch(1);
 	buttons->addWidget(details_);
 
@@ -124,6 +132,8 @@ CameraSyncDock::CameraSyncDock(camera_sync::Controller &controller)
 	});
 	QObject::connect(start_, &QPushButton::clicked, this, [this] { controller_.start_or_stop(); });
 	QObject::connect(reset_, &QPushButton::clicked, this, [this] { controller_.reset(); });
+	QObject::connect(apply_, &QPushButton::clicked, this, [this] { controller_.apply(); });
+	QObject::connect(undo_, &QPushButton::clicked, this, [this] { controller_.undo(); });
 	QObject::connect(details_, &QCheckBox::toggled, this, [this](bool on) { controller_.set_details(on); });
 }
 
@@ -139,9 +149,28 @@ void CameraSyncDock::render(const camera_sync::DockView &view)
 	start_->setText(utf8(view.start_label));
 	start_->setEnabled(view.start_enabled);
 	reset_->setEnabled(view.reset_enabled);
+	apply_->setEnabled(view.apply_enabled);
+	undo_->setEnabled(view.undo_enabled);
 	details_->setChecked(view.show_details);
 	message_->setText(utf8(view.message));
 	message_->setVisible(!view.message.empty());
+}
+
+// The on-air question, modal, with "Apply" and "Cancel"; Cancel is the default, so Enter writes nothing (ALIGN-64).
+bool CameraSyncDock::confirm(const std::string &question, const std::string &detail)
+{
+	QMessageBox box(this);
+	box.setWindowTitle(text("CameraSync.Dock.Title"));
+	box.setIcon(QMessageBox::Question);
+	box.setText(utf8(question));
+	if (!detail.empty())
+		box.setInformativeText(utf8(detail));
+	QPushButton *apply = box.addButton(text(camera_sync::strings::button_apply), QMessageBox::AcceptRole);
+	QPushButton *cancel = box.addButton(text(camera_sync::strings::button_cancel), QMessageBox::RejectRole);
+	box.setDefaultButton(cancel);
+	box.setEscapeButton(cancel);
+	box.exec();
+	return box.clickedButton() == apply;
 }
 
 // Rows are updated in place, so a tick under the cursor is not rebuilt; the list is rebuilt only when its cameras or

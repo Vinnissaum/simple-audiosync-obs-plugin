@@ -57,6 +57,12 @@ std::string translate(const char *key)
 	return obs_module_text(key);
 }
 
+// Streaming, or recording, a paused recording included (ALIGN-45).
+bool on_air()
+{
+	return obs_frontend_streaming_active() || obs_frontend_recording_active();
+}
+
 // The UUID of the source a libobs signal is about, or none.
 std::optional<SourceId> signalled_source(calldata_t *data)
 {
@@ -134,6 +140,9 @@ struct ObsCallbacks {
 
 Controller::Controller()
 	: session_(factory_, monotonic_ns, log_to_obs, source_name),
+	  port_(on_air),
+	  measuring_(session_),
+	  alignment_(port_, measuring_, monotonic_ns, log_to_obs),
 	  store_(std::make_unique<SelectionStore>([this] { return to_saved(choice_); }))
 {
 	obs_frontend_add_event_callback(ObsCallbacks::frontend_event, this);
@@ -197,6 +206,7 @@ void Controller::start_or_stop()
 void Controller::reset()
 {
 	session_.reset();
+	alignment_.reset();
 	refresh();
 }
 
@@ -206,6 +216,38 @@ void Controller::set_details(bool details)
 	refresh();
 }
 
+void Controller::apply()
+{
+	alignment_.apply(request(), [this](const Counts &counts) { return confirm(counts); });
+	refresh();
+}
+
+void Controller::undo()
+{
+	alignment_.undo([this](const Counts &counts) { return confirm(counts); });
+	refresh();
+}
+
+// The ticked cameras and the mic as the dock shows them, the session's readings, and the canvas frame rate to measure
+// at again after an Apply from Stopped.
+AlignmentRequest Controller::request()
+{
+	sources_ = catalog_.list();
+	FrameRate rate;
+	obs_video_info video;
+	if (obs_get_video_info(&video))
+		rate = FrameRate{video.fps_num, video.fps_den};
+	return request_for(sources_, choice_, session_.snapshot(), rate);
+}
+
+// The on-air question, through the dock. With no dock to ask, nothing is written.
+bool Controller::confirm(const Counts &counts)
+{
+	if (!sink_ || !sink_widget_)
+		return false;
+	return sink_->confirm(confirmation_question(counts, translate), confirmation_detail(counts, translate));
+}
+
 void Controller::on_collection_changing()
 {
 	// Every tap goes before OBS clears the collection (READ-28). The choice stays as it is: OBS saves the old
@@ -213,6 +255,7 @@ void Controller::on_collection_changing()
 	// forgotten, so a new or duplicated collection, which OBS does not load, is judged as having saved nothing.
 	unwatch_all();
 	session_.collection_changing();
+	alignment_.collection_changing(); // the Undo snapshot is for this collection only (ALIGN-32)
 	store_->forget();
 }
 
@@ -355,7 +398,7 @@ void Controller::refresh()
 	if (!sink_ || !sink_widget_)
 		return;
 	sources_ = catalog_.list();
-	sink_->render(build_view(snapshot, sources_, choice_, details_, translate));
+	sink_->render(build_view(snapshot, sources_, choice_, details_, translate, alignment_.status()));
 }
 
 } // namespace camera_sync

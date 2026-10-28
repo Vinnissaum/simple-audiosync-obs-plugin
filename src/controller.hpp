@@ -2,13 +2,16 @@
 #pragma once
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <QObject>
 #include <QPointer>
 #include <QTimer>
 
+#include "alignment/alignment.hpp"
 #include "obs/obs-catalog.hpp"
+#include "obs/obs-settings-port.hpp"
 #include "obs/obs-tap-factory.hpp"
 #include "obs/selection-store.hpp"
 #include "reading/session.hpp"
@@ -24,6 +27,8 @@ class ViewSink {
 public:
 	virtual ~ViewSink() = default;
 	virtual void render(const DockView &view) = 0;
+	// Asks the on-air question modally: true when the user accepts. OBS keeps running while it is open.
+	virtual bool confirm(const std::string &question, const std::string &detail) = 0;
 };
 
 // Connects OBS to the session. It owns the session, the catalog, the selection store and the tap factory, turns
@@ -48,9 +53,22 @@ public:
 	void start_or_stop();
 	void reset();
 	void set_details(bool details);
+	void apply();
+	void undo();
 
 private:
 	friend struct ObsCallbacks;
+
+	// The session as Apply and Undo see it.
+	class Measuring : public MeasuringControl {
+	public:
+		explicit Measuring(Session &session) : session_(session) {}
+		void clear_readings() override { session_.clear_readings(); }
+		void resume(FrameRate rate) override { session_.start(rate); }
+
+	private:
+		Session &session_;
+	};
 
 	// A source whose own signals are connected: a ticked camera's filter changes, or the mic's Sync Offset.
 	struct Watched {
@@ -69,10 +87,15 @@ private:
 	void unwatch_all();
 	void detach();
 	void refresh();
+	AlignmentRequest request();
+	bool confirm(const Counts &counts);
 
 	ObsTapFactory factory_;
 	ObsCatalog catalog_;
 	Session session_;
+	ObsSettingsPort port_;
+	Measuring measuring_;
+	Alignment alignment_;
 	std::unique_ptr<SelectionStore> store_;
 	QObject context_; // runs the calls queued from OBS's threads on the UI thread; they die with it
 	QTimer timer_;
