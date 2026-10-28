@@ -36,6 +36,30 @@
       ],
       "method": "copy",
       "global": false
+    },
+    "tlc-spec-driven": {
+      "name": "tlc-spec-driven",
+      "source": "local",
+      "contentHash": "9f4c793556001f3210a2d9fe3b41bf24e82e581c522d8dd50f65addfee169a29",
+      "installedAt": "2026-10-11T18:14:59.177Z",
+      "updatedAt": "2026-10-11T18:14:59.177Z",
+      "agents": [
+        "claude-code"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "tlc-spec-lean": {
+      "name": "tlc-spec-lean",
+      "source": "local",
+      "contentHash": "51bcf485f5b981d613d660767d03f194d9117188c7615914108759a21de7b5cf",
+      "installedAt": "2026-10-28T20:02:22.299Z",
+      "updatedAt": "2026-10-28T20:02:22.299Z",
+      "agents": [
+        "claude-code"
+      ],
+      "method": "copy",
+      "global": false
     }
   }
 }

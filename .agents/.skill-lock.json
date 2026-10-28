@@ -48,6 +48,19 @@
       ],
       "method": "copy",
       "global": false
+    },
+    "tlc-spec-lean": {
+      "name": "tlc-spec-lean",
+      "source": "local",
+      "contentHash": "51bcf485f5b981d613d660767d03f194d9117188c7615914108759a21de7b5cf",
+      "installedAt": "2026-10-28T20:02:22.299Z",
+      "updatedAt": "2026-10-28T20:02:22.320Z",
+      "agents": [
+        "claude-code",
+        "github-copilot"
+      ],
+      "method": "copy",
+      "global": false
     }
   }
 }
