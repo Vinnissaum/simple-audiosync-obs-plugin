@@ -33,5 +33,6 @@ target_include_directories(camera-sync-integration-tests PRIVATE ${PROJECT_SOURC
 
 target_link_libraries(camera-sync-integration-tests PRIVATE OBS::libobs camera-sync-core)
 
-# One CTest test per doctest test case. Listing them runs the executable, which starts libobs only for a case.
-doctest_discover_tests(camera-sync-integration-tests)
+# One CTest test per doctest test case. Listing them runs the executable, which starts libobs only for a case. A case
+# that could not start libobs prints why and returns; CTest reports it Skipped rather than Passed (ALIGN-80).
+doctest_discover_tests(camera-sync-integration-tests PROPERTIES SKIP_REGULAR_EXPRESSION "ALIGN-80 moves")

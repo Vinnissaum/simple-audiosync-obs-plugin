@@ -379,7 +379,10 @@ Proof: `ctest --preset core -R "^the last result lasts until the next result, re
   `6c1142f..de0f614` to `origin/main` for CI. CI then failed Check Formatting on seven files and
   Build for Windows on Reading's "estimator snapshots show each camera as it was at one instant while
   four threads push markers", whose files this feature does not touch; it passed 300 runs in a row on
-  WSL. User, asked to push the formatting fix: "ok, keep going".
+  WSL. User, asked to push the formatting fix: "ok, keep going". CI at `902e867`, user: "passed" -
+  every job green, test 126 included; the Ubuntu job ran 258 tests, the ten integration cases among
+  them, all "Passed". A case whose libobs did not start also returned "Passed", so that run does not
+  show the cases ran: the integration tests now mark that case Skipped.
 - **Dispatched:** none. The Verifier waits until the feature is held whole: the `walk - CI` proofs
   need a push and the `walk - rig` proofs need the rig.
 - **Boundary:** every check with a `ctest` or command proof is green at `09a7b8f`: C1-C20, C21's
