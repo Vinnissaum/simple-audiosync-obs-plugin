@@ -23,6 +23,9 @@ struct Reading {
 // Each camera's reading, in the order of `cameras`. A camera the session has no row for is not Stable.
 std::vector<Reading> readings_of(const std::vector<SourceId> &cameras, const std::vector<CameraRow> &rows);
 
+// A reading r is within one frame of the mic when -F <= r <= F.
+bool within_one_frame(int64_t reading_ms, double frame_interval_ms);
+
 enum class PrecheckKind { Ready, Waiting, AlreadyAligned };
 
 struct Precheck {

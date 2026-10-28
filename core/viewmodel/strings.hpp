@@ -27,11 +27,40 @@ inline constexpr const char *label_mic = "CameraSync.Label.Mic";
 inline constexpr const char *label_pattern = "CameraSync.Label.Pattern";
 inline constexpr const char *label_details = "CameraSync.Label.Details";
 
+// Alignment: Apply, Undo and the on-air question (ALIGN-63).
+inline constexpr const char *button_apply = "CameraSync.Button.Apply";
+inline constexpr const char *button_undo = "CameraSync.Button.Undo";
+inline constexpr const char *button_cancel = "CameraSync.Button.Cancel";
+inline constexpr const char *row_aligned = "CameraSync.Row.Aligned";
+inline constexpr const char *message_waiting = "CameraSync.Message.Waiting";
+inline constexpr const char *message_already_aligned = "CameraSync.Message.AlreadyAligned";
+inline constexpr const char *message_over_limit = "CameraSync.Message.OverLimit";
+inline constexpr const char *message_apply_failed = "CameraSync.Message.ApplyFailed";
+inline constexpr const char *message_apply_restore_failed = "CameraSync.Message.ApplyRestoreFailed";
+inline constexpr const char *message_undo_failed = "CameraSync.Message.UndoFailed";
+inline constexpr const char *message_undo_restore_failed = "CameraSync.Message.UndoRestoreFailed";
+inline constexpr const char *message_applied = "CameraSync.Message.Applied";
+inline constexpr const char *message_undone = "CameraSync.Message.Undone";
+inline constexpr const char *message_value = "CameraSync.Message.Value";
+inline constexpr const char *message_aligned = "CameraSync.Message.Aligned";
+inline constexpr const char *question_cameras_and_mic = "CameraSync.Question.CamerasAndMic";
+inline constexpr const char *question_camera_and_mic = "CameraSync.Question.CameraAndMic";
+inline constexpr const char *question_cameras = "CameraSync.Question.Cameras";
+inline constexpr const char *question_camera = "CameraSync.Question.Camera";
+inline constexpr const char *question_mic = "CameraSync.Question.Mic";
+inline constexpr const char *question_pause = "CameraSync.Question.Pause";
+
 // Every key above.
-inline constexpr std::array<const char *, 15> all_keys = {
-	row_looking, row_settling, row_video_late,   row_video_early, row_in_sync,
-	row_details, message_pick, message_no_sound, message_mic_tap, button_start,
-	button_stop, button_reset, label_mic,        label_pattern,   label_details,
+inline constexpr std::array<const char *, 36> all_keys = {
+	row_looking,             row_settling,                row_video_late,           row_video_early,
+	row_in_sync,             row_details,                 message_pick,             message_no_sound,
+	message_mic_tap,         button_start,                button_stop,              button_reset,
+	label_mic,               label_pattern,               label_details,            button_apply,
+	button_undo,             button_cancel,               row_aligned,              message_waiting,
+	message_already_aligned, message_over_limit,          message_apply_failed,     message_apply_restore_failed,
+	message_undo_failed,     message_undo_restore_failed, message_applied,          message_undone,
+	message_value,           message_aligned,             question_cameras_and_mic, question_camera_and_mic,
+	question_cameras,        question_camera,             question_mic,             question_pause,
 };
 
 // A placeholder's name and the text that replaces it.

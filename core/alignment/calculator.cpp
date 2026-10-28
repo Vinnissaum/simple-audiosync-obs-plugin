@@ -21,6 +21,12 @@ std::vector<Reading> readings_of(const std::vector<SourceId> &cameras, const std
 	return readings;
 }
 
+bool within_one_frame(int64_t reading_ms, double frame_interval_ms)
+{
+	const double ms = static_cast<double>(reading_ms);
+	return ms >= -frame_interval_ms && ms <= frame_interval_ms;
+}
+
 Precheck precheck(const std::vector<Reading> &readings, double frame_interval_ms)
 {
 	for (size_t i = 0; i < readings.size(); i++) {
@@ -28,8 +34,7 @@ Precheck precheck(const std::vector<Reading> &readings, double frame_interval_ms
 			return Precheck{PrecheckKind::Waiting, i};
 	}
 	for (const Reading &reading : readings) {
-		const double ms = static_cast<double>(reading.ms);
-		if (ms < -frame_interval_ms || ms > frame_interval_ms)
+		if (!within_one_frame(reading.ms, frame_interval_ms))
 			return Precheck{PrecheckKind::Ready, 0};
 	}
 	return Precheck{PrecheckKind::AlreadyAligned, 0};

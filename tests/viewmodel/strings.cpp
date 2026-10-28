@@ -114,3 +114,38 @@ TEST_CASE("fill replaces named placeholders once and leaves the rest")
 		CHECK(fill("{name}", {{"name", "{name}"}}) == "{name}");
 	}
 }
+
+TEST_CASE("locale file holds the en-US text of every alignment string")
+{
+	// ALIGN-63: the plan's text, character for character; the check mark is U+2713 (bytes E2 9C 93).
+	const std::map<std::string, std::string> locale = read_locale();
+	const std::map<std::string, std::string> expected = {
+		{"CameraSync.Button.Apply", "Apply"},
+		{"CameraSync.Button.Undo", "Undo"},
+		{"CameraSync.Button.Cancel", "Cancel"},
+		{"CameraSync.Row.Aligned", "\xE2\x9C\x93 {status}"},
+		{"CameraSync.Message.Waiting", "Waiting for {camera}"},
+		{"CameraSync.Message.AlreadyAligned", "Already aligned"},
+		{"CameraSync.Message.OverLimit", "{camera} needs more delay than OBS allows"},
+		{"CameraSync.Message.ApplyFailed", "Apply failed - nothing changed"},
+		{"CameraSync.Message.ApplyRestoreFailed", "Apply failed - check the log"},
+		{"CameraSync.Message.UndoFailed", "Undo failed - nothing changed"},
+		{"CameraSync.Message.UndoRestoreFailed", "Undo failed - check the log"},
+		{"CameraSync.Message.Applied", "Applied - {values}"},
+		{"CameraSync.Message.Undone", "Undone - {values}"},
+		{"CameraSync.Message.Value", "{name} {value} ms"},
+		{"CameraSync.Message.Aligned", "Aligned"},
+		{"CameraSync.Question.CamerasAndMic", "Shift {n} cameras and the mic while on air?"},
+		{"CameraSync.Question.CameraAndMic", "Shift 1 camera and the mic while on air?"},
+		{"CameraSync.Question.Cameras", "Shift {n} cameras while on air?"},
+		{"CameraSync.Question.Camera", "Shift 1 camera while on air?"},
+		{"CameraSync.Question.Mic", "Shift the mic while on air?"},
+		{"CameraSync.Question.Pause", "Cameras whose delay changes pause until their new delay fills."},
+	};
+
+	for (const auto &entry : expected) {
+		const auto found = locale.find(entry.first);
+		REQUIRE_MESSAGE(found != locale.end(), "missing from the ini: ", entry.first);
+		CHECK(found->second == entry.second);
+	}
+}

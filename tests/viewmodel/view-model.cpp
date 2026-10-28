@@ -36,6 +36,24 @@ std::string en_us(const char *key)
 		{"CameraSync.Message.MicTap", "Could not listen to {mic}"},
 		{"CameraSync.Button.Start", "Start"},
 		{"CameraSync.Button.Stop", "Stop"},
+		{"CameraSync.Row.Aligned", "\xE2\x9C\x93 {status}"},
+		{"CameraSync.Message.Waiting", "Waiting for {camera}"},
+		{"CameraSync.Message.AlreadyAligned", "Already aligned"},
+		{"CameraSync.Message.OverLimit", "{camera} needs more delay than OBS allows"},
+		{"CameraSync.Message.ApplyFailed", "Apply failed - nothing changed"},
+		{"CameraSync.Message.ApplyRestoreFailed", "Apply failed - check the log"},
+		{"CameraSync.Message.UndoFailed", "Undo failed - nothing changed"},
+		{"CameraSync.Message.UndoRestoreFailed", "Undo failed - check the log"},
+		{"CameraSync.Message.Applied", "Applied - {values}"},
+		{"CameraSync.Message.Undone", "Undone - {values}"},
+		{"CameraSync.Message.Value", "{name} {value} ms"},
+		{"CameraSync.Message.Aligned", "Aligned"},
+		{"CameraSync.Question.CamerasAndMic", "Shift {n} cameras and the mic while on air?"},
+		{"CameraSync.Question.CameraAndMic", "Shift 1 camera and the mic while on air?"},
+		{"CameraSync.Question.Cameras", "Shift {n} cameras while on air?"},
+		{"CameraSync.Question.Camera", "Shift 1 camera while on air?"},
+		{"CameraSync.Question.Mic", "Shift the mic while on air?"},
+		{"CameraSync.Question.Pause", "Cameras whose delay changes pause until their new delay fills."},
 	};
 	const auto found = text.find(key);
 	return found == text.end() ? std::string(key) : found->second;
@@ -309,4 +327,278 @@ TEST_CASE("details off leaves the detail text empty")
 	CHECK_FALSE(view.show_details);
 	CHECK(view.cameras[0].details == "");
 	CHECK(view.cameras[0].status == "+142 ms - video late");
+}
+
+namespace {
+
+using camera_sync::AlignmentStatus;
+using camera_sync::confirmation_detail;
+using camera_sync::confirmation_question;
+using camera_sync::Counts;
+using camera_sync::format_value_ms;
+using camera_sync::NamedValue;
+using camera_sync::Outcome;
+using camera_sync::OutcomeKind;
+
+const std::string check_mark = "\xE2\x9C\x93 "; // U+2713 and a space
+
+// Cam A and Cam B ticked against the mic Shure MV7, measuring at F = 33.333 ms, both Stable at 0 unless a test says
+// otherwise.
+struct Dock {
+	std::vector<SourceInfo> sources{camera("a", "Cam A"), camera("b", "Cam B"), mic_source("mic", "Shure MV7")};
+	Choice choice{{"a", "b"}, std::string("mic")};
+	SessionSnapshot snapshot;
+	AlignmentStatus alignment;
+
+	Dock()
+	{
+		snapshot = snapshot_in(SessionState::Measuring);
+		snapshot.frame_interval_ms = 33.333;
+		snapshot.cameras = {row("a", CameraState::Stable, 0, 0), row("b", CameraState::Stable, 0, 0)};
+	}
+
+	DockView view() const { return build_view(snapshot, sources, choice, false, en_us, alignment); }
+	std::string message() const { return view().message; }
+
+	void last(OutcomeKind kind, std::string source = {}, std::vector<NamedValue> values = {})
+	{
+		Outcome outcome;
+		outcome.kind = kind;
+		outcome.source = std::move(source);
+		outcome.values = std::move(values);
+		alignment.last = outcome;
+	}
+};
+
+} // namespace
+
+TEST_CASE("apply is enabled only with a mic and every ticked camera stable")
+{
+	// ALIGN-47.
+	Dock dock;
+	CHECK(dock.view().apply_enabled);
+
+	dock.snapshot.cameras[1].state = CameraState::Settling;
+	CHECK_FALSE(dock.view().apply_enabled);
+	dock.snapshot.cameras[1].state = CameraState::Stable;
+	dock.snapshot.cameras[0].state = CameraState::Looking;
+	CHECK_FALSE(dock.view().apply_enabled);
+	dock.snapshot.cameras[0].state = CameraState::Stable;
+
+	// A ticked camera the session has no row for has no stable reading.
+	dock.snapshot.cameras.pop_back();
+	CHECK_FALSE(dock.view().apply_enabled);
+	dock.snapshot.cameras.push_back(row("b", CameraState::Stable, 0, 0));
+
+	dock.choice.mic.reset();
+	CHECK_FALSE(dock.view().apply_enabled);
+	dock.choice.mic = "mic";
+
+	dock.choice.cameras.clear();
+	CHECK_FALSE(dock.view().apply_enabled);
+
+	// Stable and already within one frame: Apply stays enabled and answers "Already aligned".
+	dock.choice.cameras = {"a", "b"};
+	CHECK(dock.view().apply_enabled);
+}
+
+TEST_CASE("the message line waits for the first camera in checklist order that is not stable")
+{
+	// ALIGN-48: checklist order ignores case, so "cam b" comes before "Cam C".
+	Dock dock;
+	dock.sources = {camera("c", "Cam C"), camera("b", "cam b"), camera("a", "Brio"), mic_source("mic", "Shure")};
+	dock.choice.cameras = {"c", "b", "a"};
+	dock.snapshot.cameras = {row("a", CameraState::Stable, 0, 50), row("b", CameraState::Settling, 40),
+				 row("c", CameraState::Looking)};
+	CHECK_FALSE(dock.view().apply_enabled);
+	CHECK(dock.message() == "Waiting for cam b");
+
+	// A message that outranks it shows instead.
+	dock.snapshot.no_pattern_sound = true;
+	CHECK(dock.message() == "No pattern sound from Shure - bring the phone closer or unmute it");
+}
+
+TEST_CASE("undo is enabled exactly while an undo snapshot exists")
+{
+	// ALIGN-49.
+	Dock dock;
+	CHECK_FALSE(dock.view().undo_enabled);
+	dock.alignment.undo_available = true;
+	CHECK(dock.view().undo_enabled);
+	// Whatever else the dock shows.
+	dock.choice.cameras.clear();
+	CHECK(dock.view().undo_enabled);
+}
+
+TEST_CASE("the message line reads already aligned")
+{
+	Dock dock;
+	dock.last(OutcomeKind::AlreadyAligned);
+	CHECK(dock.message() == "Already aligned");
+}
+
+TEST_CASE("the message line names the camera or the mic over the limit")
+{
+	Dock dock;
+	dock.last(OutcomeKind::OverLimit, "Cam B");
+	CHECK(dock.message() == "Cam B needs more delay than OBS allows");
+	dock.last(OutcomeKind::OverLimit, "Shure MV7");
+	CHECK(dock.message() == "Shure MV7 needs more delay than OBS allows");
+}
+
+TEST_CASE("the message line reads apply failed nothing changed")
+{
+	Dock dock;
+	dock.last(OutcomeKind::ApplyFailed);
+	CHECK(dock.message() == "Apply failed - nothing changed");
+}
+
+TEST_CASE("the message line reads apply failed check the log after a failed restore")
+{
+	Dock dock;
+	dock.last(OutcomeKind::ApplyRestoreFailed);
+	CHECK(dock.message() == "Apply failed - check the log");
+}
+
+TEST_CASE("the message line lists every applied value in order")
+{
+	// ALIGN-54.
+	Dock dock;
+	dock.last(OutcomeKind::Applied, {}, {{"Cam A", 0}, {"Cam B", 60}, {"Shure MV7", 100}});
+	CHECK(dock.message() == "Applied - Cam A 0 ms, Cam B 60 ms, Shure MV7 100 ms");
+}
+
+TEST_CASE("the message line lists every undone value with a true minus sign")
+{
+	// ALIGN-55: a negative value takes U+2212, and no value takes a plus sign.
+	Dock dock;
+	dock.last(OutcomeKind::Undone, {}, {{"Cam A", 0}, {"Cam B", 0}, {"Shure MV7", -200}});
+	CHECK(dock.message() == "Undone - Cam A 0 ms, Cam B 0 ms, Shure MV7 " + minus + "200 ms");
+
+	CHECK(format_value_ms(60) == "60");
+	CHECK(format_value_ms(0) == "0");
+	CHECK(format_value_ms(-200) == minus + "200");
+	CHECK(format_value_ms(-200).find('-') == std::string::npos);
+}
+
+TEST_CASE("the message line words a failed undo and a failed undo restore")
+{
+	Dock dock;
+	dock.last(OutcomeKind::UndoFailed);
+	CHECK(dock.message() == "Undo failed - nothing changed");
+	dock.last(OutcomeKind::UndoRestoreFailed);
+	CHECK(dock.message() == "Undo failed - check the log");
+}
+
+TEST_CASE("the message line shows no result before any apply or undo")
+{
+	Dock dock;
+	CHECK(dock.message() == "");
+}
+
+TEST_CASE("a ticked camera within one frame after an apply gets a check mark")
+{
+	// ALIGN-58, F = 33.333 ms.
+	Dock dock;
+	dock.sources = {camera("a", "Cam A"), camera("b", "Cam B"), camera("c", "Cam C"), camera("d", "Cam D"),
+			mic_source("mic", "Shure MV7")};
+	dock.choice.cameras = {"a", "b", "c", "d"};
+	dock.snapshot.cameras = {row("a", CameraState::Stable, 0, 4), row("b", CameraState::Stable, 0, 0),
+				 row("c", CameraState::Stable, 0, 34), row("d", CameraState::Settling, 3)};
+
+	DockView view = dock.view();
+	REQUIRE(view.cameras.size() == 4);
+	CHECK(view.cameras[0].status == "+4 ms - video late");
+	CHECK(view.cameras[1].status == "0 ms - in sync");
+
+	dock.alignment.aligned_after_apply = true;
+	view = dock.view();
+	CHECK(view.cameras[0].status == check_mark + "+4 ms - video late");
+	CHECK(view.cameras[1].status == check_mark + "0 ms - in sync");
+	CHECK(view.cameras[2].status == "+34 ms - video late");
+	CHECK(view.cameras[3].status == "+3 ms - settling");
+
+	// Both bounds: -33 is within F, -34 is not.
+	dock.snapshot.cameras[2].reading_ms = -33;
+	CHECK(dock.view().cameras[2].status == check_mark + minus + "33 ms - video early");
+	dock.snapshot.cameras[2].reading_ms = -34;
+	CHECK(dock.view().cameras[2].status == minus + "34 ms - video early");
+}
+
+TEST_CASE("the message line reads aligned once every ticked camera is marked")
+{
+	// ALIGN-59.
+	Dock dock;
+	dock.alignment.aligned_after_apply = true;
+	dock.last(OutcomeKind::Applied, {}, {{"Cam A", 0}, {"Cam B", 60}, {"Shure MV7", 100}});
+	dock.snapshot.cameras = {row("a", CameraState::Stable, 0, 4), row("b", CameraState::Stable, 0, -2)};
+	CHECK(dock.message() == "Aligned");
+
+	// One unmarked: the last result.
+	dock.snapshot.cameras[1].reading_ms = 40;
+	CHECK(dock.message() == "Applied - Cam A 0 ms, Cam B 60 ms, Shure MV7 100 ms");
+
+	// One not Stable and no result: waiting.
+	dock.alignment.last.reset();
+	dock.snapshot.cameras[1].state = CameraState::Settling;
+	CHECK(dock.message() == "Waiting for Cam B");
+
+	// Without an Apply, readings within one frame are not "Aligned".
+	dock.alignment.aligned_after_apply = false;
+	dock.snapshot.cameras[1] = row("b", CameraState::Stable, 0, 0);
+	CHECK(dock.message() == "");
+}
+
+TEST_CASE("the message line ranks its messages")
+{
+	// ALIGN-60: pick, could not listen, no pattern sound, Aligned, the last result, waiting.
+	Dock dock;
+	dock.alignment.aligned_after_apply = true;
+	dock.last(OutcomeKind::ApplyFailed);
+
+	SUBCASE("pick over could not listen")
+	{
+		dock.snapshot.mic_tap_failed = true;
+		dock.choice.cameras.clear();
+		CHECK(dock.message() == "Pick at least one camera and the mic");
+	}
+	SUBCASE("could not listen over no pattern sound")
+	{
+		dock.snapshot.mic_tap_failed = true;
+		dock.snapshot.no_pattern_sound = true;
+		CHECK(dock.message() == "Could not listen to Shure MV7");
+	}
+	SUBCASE("no pattern sound over Aligned")
+	{
+		dock.snapshot.no_pattern_sound = true;
+		CHECK(dock.message() == "No pattern sound from Shure MV7 - bring the phone closer or unmute it");
+	}
+	SUBCASE("Aligned over the last result")
+	{
+		CHECK(dock.message() == "Aligned");
+	}
+	SUBCASE("the last result over waiting")
+	{
+		dock.snapshot.cameras[0].state = CameraState::Settling;
+		CHECK(dock.message() == "Apply failed - nothing changed");
+	}
+}
+
+TEST_CASE("the on-air question words each count")
+{
+	// ALIGN-61.
+	CHECK(confirmation_question(Counts{3, true}, en_us) == "Shift 3 cameras and the mic while on air?");
+	CHECK(confirmation_question(Counts{1, true}, en_us) == "Shift 1 camera and the mic while on air?");
+	CHECK(confirmation_question(Counts{2, false}, en_us) == "Shift 2 cameras while on air?");
+	CHECK(confirmation_question(Counts{1, false}, en_us) == "Shift 1 camera while on air?");
+	CHECK(confirmation_question(Counts{0, true}, en_us) == "Shift the mic while on air?");
+}
+
+TEST_CASE("the on-air question adds the pause line only when a camera changes")
+{
+	// ALIGN-62.
+	const std::string pause = "Cameras whose delay changes pause until their new delay fills.";
+	CHECK(confirmation_detail(Counts{1, false}, en_us) == pause);
+	CHECK(confirmation_detail(Counts{3, true}, en_us) == pause);
+	CHECK(confirmation_detail(Counts{0, true}, en_us) == "");
 }
