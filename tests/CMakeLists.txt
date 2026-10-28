@@ -10,6 +10,9 @@ target_sources(
     alignment/types.cpp
     alignment/calculator.cpp
     alignment/write-steps.cpp
+    alignment/apply.cpp
+    alignment/undo.cpp
+    alignment/lifetime.cpp
     core/load-line.cpp
     core/log-lines.cpp
     detector/quirc.cpp
