@@ -1,5 +1,7 @@
 # Alignment Tasks
 
+> **Superseded on 2026-10-28.** At the maintainer's choice, Alignment is built with tlc-spec-lean from `plan.md` and `checks.md` in this folder. This task list and its Execution Protocol no longer apply; the file is kept for its history, and its "Done when" examples are carried into `plan.md`'s criteria.
+
 ## Execution Protocol (MANDATORY -- do not skip)
 
 Implement these tasks with the `tlc-spec-driven` skill: **activate it by name and follow its Execute flow and Critical Rules.** Do not search for skill files by filesystem path. The skill is the source of truth for the full flow (per-task cycle, sub-agent delegation, adequacy review, Verifier, discrimination sensor).
