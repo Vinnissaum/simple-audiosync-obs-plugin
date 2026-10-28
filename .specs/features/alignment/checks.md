@@ -5,9 +5,9 @@ Build: `cmake --preset core`; `cmake --build --preset core`
 Plan: `.specs/features/alignment/plan.md`
 
 Every command runs from the repository root with `export PATH=$HOME/.local/bin:$PATH` first, as
-`CLAUDE.md` says for the WSL machine. A `walk - CI` proof is closed by the CI run the `**Walked:**`
-line names (`gh` is not installed here, so the maintainer reports the run); a `walk - rig` proof by
-the maintainer's rig session recorded there.
+`CLAUDE.md` says for the WSL machine. A `walk - CI` proof is closed by the CI run that the Handoff's
+walk line names (`gh` is not installed here, so the maintainer reports the run); a `walk - rig` proof
+by the maintainer's rig session recorded there. That line is written only once both have run.
 
 ## Intent
 
@@ -373,7 +373,27 @@ Proof: `ctest --preset core -R "^the last result lasts until the next result, re
 
 ## Handoff
 
-- **Settled mid-build:** none
-- **Dispatched:** none
-- **Boundary:** none closed yet
-- **Abandoned:** none
+- **Settled mid-build:** none. The plan was approved with "approved, keep going"; the two questions
+  asked with it, pushing to `origin/main` for CI and raising `Mutations` to 5, were not answered, so
+  the build stopped at local commits and `Mutations` stays 3.
+- **Dispatched:** none. The Verifier waits until the feature is held whole: the `walk - CI` proofs
+  need a push and the `walk - rig` proofs need the rig.
+- **Boundary:** every check with a `ctest` or command proof is green at `09a7b8f`: C1-C20, C21's
+  first proof, C22-C40, C41's first proof, C42's first proof, C47-C63, C70-C76, C82-C85, C88, C89.
+  Open: the `walk - CI` proofs of C21, C41, C42, C43, C44, C45, C64, C77-C80, C86 and C87, and the
+  `walk - rig` proofs of C45, C46, C64, C65-C69 and C81.
+- **Decided in build:** "Waiting for {camera}" names only a ticked camera the session has a row for,
+  so a camera the session dropped is named nowhere (READ-44) and Reading's message-line tests stay
+  unchanged. Undo with no snapshot returns "waiting" and is not remembered. A failed Undo clears the
+  readings as a failed Apply does. "Undone" gives a restored disabled filter's delay. Putting a value
+  back skips one that already reads as found or whose source is gone, so a camera removed mid-Apply
+  is no restore failure. `request_for` builds Apply's request in the core, so the controller holds no
+  ordering rule.
+- **Abandoned:** none.
+- **Not run here:** `src/obs/obs-settings-port.cpp` and every file of `tests/integration/` pass
+  `g++ -std=c++17 -fsyntax-only -Wall -Wextra -Werror` against OBS 30.0.2's headers (the archive
+  `buildspec.json` pins, hash checked, unpacked in the session's scratchpad), and OBS's
+  `async-delay-filter.c` passes `gcc -fsyntax-only`; nothing links or runs them before CI. The
+  controller and the dock are not compiled here at all: there are no Qt headers. clang-format 19 and
+  gersemi are not installed, so formatting was matched by hand to `.clang-format` and `.gersemirc`;
+  CI's Check Formatting is C87.
