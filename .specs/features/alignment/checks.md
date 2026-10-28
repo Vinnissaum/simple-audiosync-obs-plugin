@@ -382,7 +382,8 @@ Proof: `ctest --preset core -R "^the last result lasts until the next result, re
   WSL. User, asked to push the formatting fix: "ok, keep going". CI at `902e867`, user: "passed" -
   every job green, test 126 included; the Ubuntu job ran 258 tests, the ten integration cases among
   them, all "Passed". A case whose libobs did not start also returned "Passed", so that run does not
-  show the cases ran: the integration tests now mark that case Skipped.
+  show the cases ran: the integration tests now mark that case Skipped. User: "push it" - pushed
+  `902e867..b4e8bc0`. Not answered: when to dispatch the Verifier, and `Mutations` 3 or 5.
 - **Dispatched:** none. The Verifier waits until the feature is held whole: the `walk - CI` proofs
   need a push and the `walk - rig` proofs need the rig.
 - **Boundary:** every check with a `ctest` or command proof is green at `09a7b8f`: C1-C20, C21's
