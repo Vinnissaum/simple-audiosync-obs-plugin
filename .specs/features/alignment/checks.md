@@ -375,7 +375,8 @@ Proof: `ctest --preset core -R "^the last result lasts until the next result, re
 
 - **Settled mid-build:** none. The plan was approved with "approved, keep going"; the two questions
   asked with it, pushing to `origin/main` for CI and raising `Mutations` to 5, were not answered, so
-  the build stopped at local commits and `Mutations` stays 3.
+  the build stopped at local commits and `Mutations` stays 3. 2026-10-28, user: "yes, push" - pushed
+  `6c1142f..de0f614` to `origin/main` for CI.
 - **Dispatched:** none. The Verifier waits until the feature is held whole: the `walk - CI` proofs
   need a push and the `walk - rig` proofs need the rig.
 - **Boundary:** every check with a `ctest` or command proof is green at `09a7b8f`: C1-C20, C21's
