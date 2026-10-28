@@ -31,6 +31,7 @@ target_sources(
     load-line.cpp
     log-lines.cpp
     alignment/calculator.cpp
+    alignment/write-steps.cpp
     reading/pattern.cpp
     reading/estimator.cpp
     reading/camera-pipeline.cpp

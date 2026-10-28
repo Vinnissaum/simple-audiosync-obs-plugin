@@ -9,6 +9,7 @@ target_sources(
     main.cpp
     alignment/types.cpp
     alignment/calculator.cpp
+    alignment/write-steps.cpp
     core/load-line.cpp
     core/log-lines.cpp
     detector/quirc.cpp
