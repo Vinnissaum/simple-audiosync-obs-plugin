@@ -7,6 +7,8 @@ target_sources(
   camera-sync-tests
   PRIVATE
     main.cpp
+    alignment/types.cpp
+    alignment/calculator.cpp
     core/load-line.cpp
     core/log-lines.cpp
     detector/quirc.cpp
