@@ -25,8 +25,8 @@ TEST_CASE("the request lists the ticked cameras in checklist order with their na
 	SessionSnapshot session;
 	session.frame_interval_ms = 33.333;
 
-	const AlignmentRequest request = request_for(sources, Choice{{"c", "a", "b"}, std::string("mic")}, session,
-						     FrameRate{60000, 1001});
+	const AlignmentRequest request =
+		request_for(sources, Choice{{"c", "a", "b"}, std::string("mic")}, session, FrameRate{60000, 1001});
 	REQUIRE(request.cameras.size() == 3);
 	CHECK(request.cameras[0].id == "a");
 	CHECK(request.cameras[0].name == "Brio");

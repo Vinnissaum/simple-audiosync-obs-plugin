@@ -255,9 +255,7 @@ TEST_CASE("undo that lands drops the snapshot and clears the readings without st
 	AlignmentHarness h;
 	h.port.filters["cam-a"] = disabled(120);
 	h.port.offsets["mic"] = -200500000; // s rounds to -201 ms
-	SUBCASE("measuring")
-	{
-	}
+	SUBCASE("measuring") {}
 	SUBCASE("stopped")
 	{
 		h.request.session.state = SessionState::Stopped;

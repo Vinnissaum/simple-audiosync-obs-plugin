@@ -139,7 +139,9 @@ TEST_CASE("apply restores every value when a camera is removed before its write"
 	// The hand-set negative vector writes Cam A, then Cam B, then the mic. Cam B leaves OBS after the reads, just
 	// before its write.
 	rig.port.before_writing = rig.cam_b.uuid();
-	rig.port.hook = [&rig] { rig.cam_b.remove(); };
+	rig.port.hook = [&rig] {
+		rig.cam_b.remove();
+	};
 
 	// ALIGN-78: Cam A's new filter is taken off again and the mic was never written.
 	CHECK(rig.alignment.apply(rig.request(60, 10), never).kind == OutcomeKind::ApplyFailed);

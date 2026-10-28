@@ -227,13 +227,13 @@ TEST_CASE("plan matches the seven computed test vectors")
 		int64_t s_new;
 	};
 	const Vector vectors[] = {
-		{{100, 40}, {0, 0}, 0, 100, {0, 60}, 100},           // two cameras, no corrections
-		{{-50, -120}, {0, 0}, 0, 0, {50, 120}, 0},           // mic slower than every camera
-		{{40, 40}, {0, 60}, 100, 40, {0, 60}, 140},          // re-apply adds the remainder
-		{{150, 30}, {200, 0}, 100, 30, {80, 0}, 130},        // the plugin's filter over-delays a camera
-		{{-50, -30}, {0, 0}, 100, -30, {20, 0}, 70},         // the mic's offset is larger than needed
-		{{480, 30}, {0, 0}, 0, 480, {0, 450}, 480},          // a user's own 500 ms filter on camera 1
-		{{60, 10}, {0, 0}, -200, 200, {140, 190}, 0},        // hand-set negative sync offset
+		{{100, 40}, {0, 0}, 0, 100, {0, 60}, 100},    // two cameras, no corrections
+		{{-50, -120}, {0, 0}, 0, 0, {50, 120}, 0},    // mic slower than every camera
+		{{40, 40}, {0, 60}, 100, 40, {0, 60}, 140},   // re-apply adds the remainder
+		{{150, 30}, {200, 0}, 100, 30, {80, 0}, 130}, // the plugin's filter over-delays a camera
+		{{-50, -30}, {0, 0}, 100, -30, {20, 0}, 70},  // the mic's offset is larger than needed
+		{{480, 30}, {0, 0}, 0, 480, {0, 450}, 480},   // a user's own 500 ms filter on camera 1
+		{{60, 10}, {0, 0}, -200, 200, {140, 190}, 0}, // hand-set negative sync offset
 	};
 	for (const Vector &v : vectors) {
 		CAPTURE(v.r[0]);

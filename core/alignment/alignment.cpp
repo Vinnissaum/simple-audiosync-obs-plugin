@@ -280,7 +280,7 @@ AlignmentStatus Alignment::status() const
 }
 
 std::optional<Alignment::Found> Alignment::read_all(const char *prefix, const std::vector<NamedSource> &cameras,
-						     const NamedSource &mic)
+						    const NamedSource &mic)
 {
 	for (const NamedSource &camera : cameras) {
 		if (!port_.resolves(camera.id)) {

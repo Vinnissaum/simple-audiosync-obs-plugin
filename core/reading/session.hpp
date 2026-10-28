@@ -59,7 +59,8 @@ struct SessionSnapshot {
 	bool mic_tap_failed = false; // the last Start could not listen to the mic
 	// While measuring: 5 s have passed since the first video marker the mic has not answered, and video markers still
 	// arrive.
-	bool no_pattern_sound = false;	// The frame interval F read at the last Start, in ms; 0 before any Start.
+	bool no_pattern_sound = false;
+	// The frame interval F read at the last Start, in ms; 0 before any Start.
 	double frame_interval_ms = 0;
 };
 
