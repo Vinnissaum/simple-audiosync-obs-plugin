@@ -32,13 +32,10 @@ struct AlignmentHarness {
 	std::vector<std::pair<camera_sync::LogLevel, std::string>> lines;
 	camera_sync::Alignment alignment;
 	camera_sync::AlignmentRequest request;
-	std::vector<camera_sync::Counts> asked;   // every question's counts, in order
-	std::function<void()> while_asking;       // runs inside the question, before the answer
+	std::vector<camera_sync::Counts> asked; // every question's counts, in order
+	std::function<void()> while_asking;     // runs inside the question, before the answer
 
-	AlignmentHarness()
-		: alignment(
-			  port, measuring, [this] { return now_ns; },
-			  [this](camera_sync::LogLevel level, const std::string &line) { lines.emplace_back(level, line); })
+	AlignmentHarness() : alignment(port, measuring, clock(), logger())
 	{
 		port.camera("cam-a");
 		port.camera("cam-b");
@@ -61,6 +58,20 @@ struct AlignmentHarness {
 			row.reading_ms = readings_ms[i];
 			request.session.cameras.push_back(row);
 		}
+	}
+
+	camera_sync::Clock clock()
+	{
+		return [this] {
+			return now_ns;
+		};
+	}
+
+	camera_sync::Logger logger()
+	{
+		return [this](camera_sync::LogLevel level, const std::string &line) {
+			lines.emplace_back(level, line);
+		};
 	}
 
 	camera_sync::Confirm answer(bool yes)

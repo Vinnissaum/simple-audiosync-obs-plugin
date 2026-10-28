@@ -16,8 +16,8 @@
 // value once after a chosen write, or forget a source. Writes are counted across write_filter, remove_filter and
 // write_sync_offset_ns, from 0.
 struct FakePort : camera_sync::SettingsPort {
-	std::map<camera_sync::SourceId, camera_sync::FilterState> filters; // a camera's plugin filter; absent when missing
-	std::map<camera_sync::SourceId, int64_t> offsets;                  // a mic's Sync Offset in ns
+	std::map<camera_sync::SourceId, camera_sync::FilterState> filters; // each camera's plugin filter, if any
+	std::map<camera_sync::SourceId, int64_t> offsets;                  // each mic's Sync Offset in ns
 	std::set<camera_sync::SourceId> sources;                           // every source that resolves
 	bool filter_available = true;
 	bool live = false; // streaming or recording

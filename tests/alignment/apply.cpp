@@ -187,8 +187,8 @@ TEST_CASE("apply over the limit writes nothing and names the source")
 	CHECK(outcome.kind == OutcomeKind::OverLimit);
 	CHECK(outcome.source == named);
 	CHECK(h.port.write_calls().empty());
-	CHECK(h.logged(LogLevel::Warning, "apply.refused reason=over_limit source=\"" + named +
-						  "\" value_ms=" + std::to_string(value)));
+	const std::string refused = "apply.refused reason=over_limit source=\"" + named + "\" value_ms=";
+	CHECK(h.logged(LogLevel::Warning, refused + std::to_string(value)));
 	CHECK(h.alignment.status().last->kind == OutcomeKind::OverLimit);
 }
 
@@ -260,23 +260,31 @@ TEST_CASE("apply after a yes refuses when a value changed or a source went while
 	std::string line;
 	SUBCASE("Cam A's delay")
 	{
-		h.while_asking = [&] { h.port.filters["cam-a"] = enabled(30); };
+		h.while_asking = [&] {
+			h.port.filters["cam-a"] = enabled(30);
+		};
 		line = "apply.refused reason=changed";
 	}
 	SUBCASE("the mic's offset")
 	{
-		h.while_asking = [&] { h.port.offsets["mic"] = 5 * AlignmentHarness::ns_per_ms; };
+		h.while_asking = [&] {
+			h.port.offsets["mic"] = 5 * AlignmentHarness::ns_per_ms;
+		};
 		line = "apply.refused reason=changed";
 	}
 	SUBCASE("Cam B's filter enabled state")
 	{
 		h.port.filters["cam-b"] = disabled(10);
-		h.while_asking = [&] { h.port.filters["cam-b"] = enabled(10); };
+		h.while_asking = [&] {
+			h.port.filters["cam-b"] = enabled(10);
+		};
 		line = "apply.refused reason=changed";
 	}
 	SUBCASE("Cam B gone")
 	{
-		h.while_asking = [&] { h.port.forget("cam-b"); };
+		h.while_asking = [&] {
+			h.port.forget("cam-b");
+		};
 		line = "apply.refused reason=source_gone source=\"cam-b\"";
 	}
 
@@ -294,7 +302,9 @@ TEST_CASE("apply after a yes refuses when the collection switched while asking")
 	h.port.live = true;
 	h.read({100, 40});
 	// A duplicated collection has sources with the same UUIDs and values, so only the switch itself tells.
-	h.while_asking = [&] { h.alignment.collection_changing(); };
+	h.while_asking = [&] {
+		h.alignment.collection_changing();
+	};
 
 	CHECK(h.apply().kind == OutcomeKind::ApplyFailed);
 	CHECK(h.port.write_calls().empty());
@@ -307,7 +317,9 @@ TEST_CASE("apply after a yes writes the plan the user saw when only a reading ch
 	h.port.live = true;
 	h.read({100, 40});
 	// The dock's refresh runs inside the question; a new reading for Cam B does not change the plan.
-	h.while_asking = [&] { h.request.session.cameras[1].reading_ms = 90; };
+	h.while_asking = [&] {
+		h.request.session.cameras[1].reading_ms = 90;
+	};
 
 	CHECK(h.apply().kind == OutcomeKind::Applied);
 	CHECK(h.port.write_calls() == Strings{"write_filter cam-b 60 on", "write_offset mic 100000000"});
@@ -321,9 +333,10 @@ TEST_CASE("apply writes only the changed values with the cameras in order before
 		h.read({100, 40});
 		CHECK(h.apply().kind == OutcomeKind::Applied);
 		CHECK(h.port.write_calls() == Strings{"write_filter cam-b 60 on", "write_offset mic 100000000"});
-		for (const std::string &call : h.port.calls)
-			CHECK((call.find("cam-a") == std::string::npos || call.rfind("read_", 0) == 0 ||
-			       call.rfind("resolves", 0) == 0));
+		for (const std::string &call : h.port.calls) {
+			const bool looks = call.rfind("read_", 0) == 0 || call.rfind("resolves", 0) == 0;
+			CHECK((looks || call.find("cam-a") == std::string::npos));
+		}
 	}
 	SUBCASE("three cameras in the request's order, the mic unchanged")
 	{
@@ -414,7 +427,8 @@ TEST_CASE("apply that fails a write at each position puts every value back and r
 			CHECK(h.port.filter("cam-a") == absent);
 			CHECK(h.port.filter("cam-b") == absent);
 			CHECK(h.port.offsets.at("mic") == -200 * AlignmentHarness::ns_per_ms);
-			CHECK(h.logged(LogLevel::Warning, "apply.result failed step=" + steps[position] + " restored=yes"));
+			const std::string failed = "apply.result failed step=" + steps[position] + " restored=yes";
+			CHECK(h.logged(LogLevel::Warning, failed));
 			CHECK(h.logged(LogLevel::Warning).size() == 1);
 			CHECK(h.alignment.status().last->kind == OutcomeKind::ApplyFailed);
 			CHECK_FALSE(h.alignment.status().undo_available);
@@ -536,7 +550,9 @@ TEST_CASE("apply refused before any write leaves the readings alone")
 	SUBCASE("changed while asking")
 	{
 		h.port.live = true;
-		h.while_asking = [&] { h.port.offsets["mic"] = 1; };
+		h.while_asking = [&] {
+			h.port.offsets["mic"] = 1;
+		};
 	}
 	h.apply(yes);
 
@@ -574,8 +590,12 @@ TEST_CASE("apply counts the duration from the answer and not the request")
 	AlignmentHarness h;
 	h.port.live = true;
 	h.read({100, 40});
-	h.while_asking = [&] { h.now_ns += 3000 * AlignmentHarness::ns_per_ms; };
-	h.port.on_write = [&] { h.now_ns += 2 * AlignmentHarness::ns_per_ms; };
+	h.while_asking = [&] {
+		h.now_ns += 3000 * AlignmentHarness::ns_per_ms;
+	};
+	h.port.on_write = [&] {
+		h.now_ns += 2 * AlignmentHarness::ns_per_ms;
+	};
 
 	CHECK(h.apply().kind == OutcomeKind::Applied);
 	CHECK(h.logged(LogLevel::Info, "apply.result ok written=2 skipped=1 duration_ms=4"));
@@ -610,7 +630,9 @@ TEST_CASE("apply logs each refusal at warning and each event at info")
 	SUBCASE("changed")
 	{
 		h.port.live = true;
-		h.while_asking = [&] { h.port.filters["cam-a"] = enabled(5); };
+		h.while_asking = [&] {
+			h.port.filters["cam-a"] = enabled(5);
+		};
 		line = "apply.refused reason=changed";
 	}
 	SUBCASE("already aligned")

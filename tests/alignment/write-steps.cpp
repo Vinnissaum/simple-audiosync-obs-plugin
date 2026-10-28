@@ -69,9 +69,14 @@ TEST_CASE("write steps reads each value back right after writing it")
 	const StepsResult result = write_steps(t.port, t.steps);
 
 	// ALIGN-24: a camera with an absent target loses its filter; the others are written with their values.
-	CHECK(t.port.calls == std::vector<std::string>{"write_filter cam-a 60 on", "read_filter cam-a",
-							"remove_filter cam-b", "read_filter cam-b",
-							"write_offset mic 100000000", "read_offset mic"});
+	const std::vector<std::string> &calls = t.port.calls;
+	REQUIRE(calls.size() == 6);
+	CHECK(calls[0] == "write_filter cam-a 60 on");
+	CHECK(calls[1] == "read_filter cam-a");
+	CHECK(calls[2] == "remove_filter cam-b");
+	CHECK(calls[3] == "read_filter cam-b");
+	CHECK(calls[4] == "write_offset mic 100000000");
+	CHECK(calls[5] == "read_offset mic");
 	CHECK(result.ok);
 	CHECK(result.written == 3);
 	CHECK_FALSE(result.failed);

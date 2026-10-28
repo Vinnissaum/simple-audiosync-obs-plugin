@@ -68,7 +68,7 @@ struct Outcome {
 // What the dock reads of the alignment.
 struct AlignmentStatus {
 	bool undo_available = false;
-	bool aligned_after_apply = false; // a successful Apply not yet followed by Undo, Reset, a switch or a failed restore
+	bool aligned_after_apply = false; // ALIGN-58: set by an Apply, cleared by Undo, Reset or a switch
 	std::optional<Outcome> last;      // the message line's result; never Waiting or Cancelled
 };
 

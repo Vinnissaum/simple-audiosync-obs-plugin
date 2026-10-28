@@ -159,16 +159,15 @@ TEST_CASE("plan never gives a negative delay or sync offset over a grid of input
 			for (int64_t d : {0, 200}) {
 				for (int64_t s : {-950, 0, 300}) {
 					const std::vector<int64_t> readings{r1, r2};
-					const PlanResult result =
-						compute_plan(readings, {enabled(d), FilterState{}}, s * ns_per_ms);
+					const std::vector<FilterState> filters{enabled(d), FilterState{}};
+					const PlanResult result = compute_plan(readings, filters, s * ns_per_ms);
 					REQUIRE(result.plan);
 					const Plan &plan = *result.plan;
 					const int64_t old_delays[] = {d, 0};
 					for (size_t i = 0; i < 2; i++) {
 						REQUIRE(plan.cameras[i].new_ms >= 0);
-						REQUIRE(readings[i] + (plan.cameras[i].new_ms - old_delays[i]) -
-								(plan.new_offset_ms - s) ==
-							0);
+						const int64_t added = plan.cameras[i].new_ms - old_delays[i];
+						REQUIRE(readings[i] + added - (plan.new_offset_ms - s) == 0);
 					}
 					REQUIRE(plan.new_offset_ms >= 0);
 					points++;

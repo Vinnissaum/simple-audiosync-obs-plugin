@@ -61,8 +61,9 @@ Outcome Alignment::apply(const AlignmentRequest &requested, const Confirm &confi
 	const std::vector<Reading> readings = readings_of(ids, request.session.cameras);
 	const Precheck check = precheck(readings, request.session.frame_interval_ms);
 	if (!request.mic || request.cameras.empty() || check.kind == PrecheckKind::Waiting) {
-		const std::string name = request.mic && !request.cameras.empty() ? request.cameras[check.camera].name
-										: std::string();
+		std::string name;
+		if (request.mic && !request.cameras.empty())
+			name = request.cameras[check.camera].name;
 		warn(alignment_refused_waiting(apply_prefix, name));
 		return outcome_of(OutcomeKind::Waiting, name);
 	}
@@ -122,11 +123,13 @@ Outcome Alignment::apply(const AlignmentRequest &requested, const Confirm &confi
 	}
 
 	std::vector<PlanEntry> entries;
-	for (size_t i = 0; i < request.cameras.size(); i++)
-		entries.push_back(PlanEntry{request.cameras[i].name, filter_value(found->filters[i]),
-					    std::to_string(plan.cameras[i].new_ms)});
-	info(alignment_plan(apply_prefix, entries,
-			    PlanEntry{mic.name, std::to_string(plan.old_offset_ms), std::to_string(plan.new_offset_ms)}));
+	for (size_t i = 0; i < request.cameras.size(); i++) {
+		const std::string to = std::to_string(plan.cameras[i].new_ms);
+		entries.push_back(PlanEntry{request.cameras[i].name, filter_value(found->filters[i]), to});
+	}
+	const std::string mic_from = std::to_string(plan.old_offset_ms);
+	const std::string mic_to = std::to_string(plan.new_offset_ms);
+	info(alignment_plan(apply_prefix, entries, PlanEntry{mic.name, mic_from, mic_to}));
 
 	const StepsResult written = write_steps(port_, steps);
 	if (!written.ok) {
@@ -202,12 +205,13 @@ Outcome Alignment::undo(const Confirm &confirm)
 	}
 
 	std::vector<PlanEntry> entries;
-	for (size_t i = 0; i < cameras.size(); i++)
-		entries.push_back(PlanEntry{cameras[i].name, filter_value(found->filters[i]),
-					    filter_value(snapshot.cameras[i].second)});
-	info(alignment_plan(undo_prefix, entries,
-			    PlanEntry{snapshot.mic.name, std::to_string(to_ms(found->sync_offset_ns)),
-				      std::to_string(to_ms(snapshot.sync_offset_ns))}));
+	for (size_t i = 0; i < cameras.size(); i++) {
+		const std::string to = filter_value(snapshot.cameras[i].second);
+		entries.push_back(PlanEntry{cameras[i].name, filter_value(found->filters[i]), to});
+	}
+	const std::string mic_from = std::to_string(to_ms(found->sync_offset_ns));
+	const std::string mic_to = std::to_string(to_ms(snapshot.sync_offset_ns));
+	info(alignment_plan(undo_prefix, entries, PlanEntry{snapshot.mic.name, mic_from, mic_to}));
 
 	const StepsResult written = write_steps(port_, steps);
 	if (!written.ok) {
@@ -221,9 +225,10 @@ Outcome Alignment::undo(const Confirm &confirm)
 	measuring_.clear_readings(); // the session keeps its state (ALIGN-40)
 
 	Outcome outcome = outcome_of(OutcomeKind::Undone);
-	for (const auto &camera : snapshot.cameras)
-		outcome.values.push_back(
-			NamedValue{camera.first.name, camera.second.present ? camera.second.delay_ms : 0});
+	for (const auto &camera : snapshot.cameras) {
+		const int64_t delay = camera.second.present ? camera.second.delay_ms : 0;
+		outcome.values.push_back(NamedValue{camera.first.name, delay});
+	}
 	outcome.values.push_back(NamedValue{snapshot.mic.name, to_ms(snapshot.sync_offset_ns)});
 	return remember(outcome);
 }
@@ -319,8 +324,10 @@ bool Alignment::failed(const char *prefix, const std::vector<Step> &steps, const
 	warn(alignment_failed(prefix, step.mic, step.name, restored));
 	for (const RestoreFailure &failure : result.restore_failures) {
 		const Step &put_back = steps[failure.step];
-		warn(put_back.mic ? restore_failed_mic(put_back.name, put_back.mic_found_ns, failure.mic_actual_ns)
-				  : restore_failed_camera(put_back.name, put_back.camera_found, failure.camera_actual));
+		if (put_back.mic)
+			warn(restore_failed_mic(put_back.name, put_back.mic_found_ns, failure.mic_actual_ns));
+		else
+			warn(restore_failed_camera(put_back.name, put_back.camera_found, failure.camera_actual));
 	}
 	// Something was written, so no reading holds (ALIGN-29).
 	measuring_.clear_readings();

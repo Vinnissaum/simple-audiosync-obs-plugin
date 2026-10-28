@@ -225,7 +225,8 @@ TEST_CASE("undo that fails a write at each position puts back the values from af
 			CHECK(h.port.filter("cam-a") == enabled(140));
 			CHECK(h.port.filter("cam-b") == enabled(190));
 			CHECK(h.port.offsets.at("mic") == 0);
-			CHECK(h.logged(LogLevel::Warning, "undo.result failed step=" + steps[position] + " restored=yes"));
+			const std::string failed = "undo.result failed step=" + steps[position] + " restored=yes";
+			CHECK(h.logged(LogLevel::Warning, failed));
 			CHECK(h.alignment.status().undo_available);
 			CHECK(h.alignment.status().last->kind == OutcomeKind::UndoFailed);
 		}
@@ -289,7 +290,9 @@ TEST_CASE("undo logs its plan and result with the undo prefix")
 	AlignmentHarness h;
 	apply_first_vector(h);
 	h.lines.clear();
-	h.port.on_write = [&] { h.now_ns += 3 * ms; };
+	h.port.on_write = [&] {
+		h.now_ns += 3 * ms;
+	};
 
 	// ALIGN-75: the new values are the snapshot's.
 	REQUIRE(h.undo().kind == OutcomeKind::Undone);

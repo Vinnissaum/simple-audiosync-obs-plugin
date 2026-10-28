@@ -2,6 +2,7 @@
 #include <doctest/doctest.h>
 
 #include <string>
+#include <vector>
 
 #include "log-lines.hpp"
 
@@ -63,12 +64,12 @@ TEST_CASE("alignment_plan lists each camera and the mic with old and new values"
 	using camera_sync::filter_value;
 
 	// ALIGN-70, the first vector: Cam A has no filter, Cam B a disabled one at 60.
-	CHECK(alignment_plan("apply",
-			     {PlanEntry{"Cam A", filter_value(absent), "0"},
-			      PlanEntry{"Cam B", filter_value(disabled_60), "60"}},
-			     PlanEntry{"Shure MV7", "0", "100"}) ==
-	      "apply.plan camera=\"Cam A\" delay_ms=none->0 camera=\"Cam B\" delay_ms=60(off)->60 mic=\"Shure MV7\" "
-	      "sync_offset_ms=0->100");
+	std::vector<PlanEntry> cameras;
+	cameras.push_back(PlanEntry{"Cam A", filter_value(absent), "0"});
+	cameras.push_back(PlanEntry{"Cam B", filter_value(disabled_60), "60"});
+	const std::string line = alignment_plan("apply", cameras, PlanEntry{"Shure MV7", "0", "100"});
+	CHECK(line == "apply.plan camera=\"Cam A\" delay_ms=none->0 camera=\"Cam B\" delay_ms=60(off)->60 "
+		      "mic=\"Shure MV7\" sync_offset_ms=0->100");
 
 	CHECK(filter_value(absent) == "none");
 	CHECK(filter_value(disabled_60) == "60(off)");
@@ -85,7 +86,8 @@ TEST_CASE("alignment_ok counts the written and skipped values and the duration")
 TEST_CASE("alignment_failed names the failed step and whether it was restored")
 {
 	using camera_sync::alignment_failed;
-	CHECK(alignment_failed("apply", false, "Cam B", true) == "apply.result failed step=camera:\"Cam B\" restored=yes");
+	CHECK(alignment_failed("apply", false, "Cam B", true) ==
+	      "apply.result failed step=camera:\"Cam B\" restored=yes");
 	CHECK(alignment_failed("apply", true, "Shure MV7", false) ==
 	      "apply.result failed step=mic:\"Shure MV7\" restored=no");
 }
@@ -125,7 +127,8 @@ TEST_CASE("the alignment lines take the undo prefix")
 	CHECK(alignment_plan("undo", {PlanEntry{"Cam B", "60", "none"}}, PlanEntry{"Shure MV7", "100", "0"}) ==
 	      "undo.plan camera=\"Cam B\" delay_ms=60->none mic=\"Shure MV7\" sync_offset_ms=100->0");
 	CHECK(alignment_ok("undo", 2, 1, 3) == "undo.result ok written=2 skipped=1 duration_ms=3");
-	CHECK(alignment_failed("undo", false, "Cam B", true) == "undo.result failed step=camera:\"Cam B\" restored=yes");
+	CHECK(alignment_failed("undo", false, "Cam B", true) ==
+	      "undo.result failed step=camera:\"Cam B\" restored=yes");
 	CHECK(alignment_refused_source_gone("undo", "cam-b") == "undo.refused reason=source_gone source=\"cam-b\"");
 	CHECK(alignment_refused_no_delay_filter("undo") == "undo.refused reason=no_delay_filter");
 	CHECK(alignment_refused_changed("undo") == "undo.refused reason=changed");
