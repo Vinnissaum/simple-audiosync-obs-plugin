@@ -284,7 +284,13 @@ jobs:
           config: ${{ needs.check-event.outputs.config }}
 
       - name: Run Unit Tests ✅
-        run: ctest --test-dir build_x86_64 -C ${{ needs.check-event.outputs.config }} --output-on-failure
+        run: |
+          : Run Unit Tests ✅
+          if [[ "${RUNNER_DEBUG}" ]]; then set -x; fi
+
+          # The integration tests start libobs, whose X11 hotkeys open a display, so every test runs under Xvfb.
+          sudo apt-get install --yes --no-install-recommends xvfb
+          xvfb-run -a ctest --test-dir build_x86_64 -C ${{ needs.check-event.outputs.config }} --output-on-failure
 
       - name: Package Plugin 📀
         uses: ./.github/actions/package-plugin

@@ -92,6 +92,13 @@ target_sources(
     src/obs/mic-tap.cpp
     src/obs/camera-tap.cpp
     src/obs/obs-tap-factory.cpp
+    src/obs/obs-settings-port.cpp
 )
 
 set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})
+
+# Apply and Undo against a real libobs. Only the Linux build has libobs built from OBS's sources, which the tests also
+# compile OBS's Video Delay (Async) from.
+if(OS_LINUX)
+  add_subdirectory(tests/integration)
+endif()

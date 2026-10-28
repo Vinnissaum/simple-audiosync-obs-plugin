@@ -83,6 +83,8 @@ ctest --preset core -R "check_notices_fixture"
 
 List the test names with `ctest --preset core -N`.
 
+The integration tests (`tests/integration/`, the `camera-sync-integration-tests` executable) run Apply and Undo against a real libobs. They build only in the Linux plugin build, which has libobs built from OBS 30.0.2's sources in `.deps/`; OBS's own Video Delay (Async) is compiled from those sources into the test. libobs starts on the first case that needs it and its X11 hotkeys open a display, so CI's Ubuntu job runs its CTest step under `xvfb-run -a`. If libobs cannot start, each case logs why and runs nothing, and the same checks move to the rig. They cannot run on the WSL machine.
+
 The notice check (`check_notices_repository`) fails, naming the file, when a C, C++ or CMake file the project writes does not start with `SPDX-License-Identifier: GPL-2.0-or-later`, or when a file in `core/detector/` does not start with Sync Dock's notice followed by its `Derived from Audio Video Sync Dock, <path> at <commit>` line.
 
 ## Commit convention
