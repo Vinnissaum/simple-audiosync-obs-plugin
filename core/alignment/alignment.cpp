@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "alignment/alignment.hpp"
 
+#include <algorithm>
+
 #include "alignment/calculator.hpp"
 #include "log-lines.hpp"
 #include "reading/pattern.hpp"
@@ -39,6 +41,27 @@ Outcome outcome_of(OutcomeKind kind, std::string source = {})
 }
 
 } // namespace
+
+AlignmentRequest request_for(const std::vector<SourceInfo> &sources, const Choice &choice,
+			     const SessionSnapshot &session, FrameRate rate)
+{
+	AlignmentRequest request;
+	for (const SourceInfo &camera : camera_list(sources, choice.mic)) {
+		if (std::find(choice.cameras.begin(), choice.cameras.end(), camera.id) != choice.cameras.end())
+			request.cameras.push_back(NamedSource{camera.id, camera.name});
+	}
+	if (choice.mic) {
+		NamedSource mic{*choice.mic, {}};
+		for (const SourceInfo &source : sources) {
+			if (source.id == *choice.mic)
+				mic.name = source.name;
+		}
+		request.mic = mic;
+	}
+	request.session = session;
+	request.rate = rate;
+	return request;
+}
 
 Alignment::Alignment(SettingsPort &port, MeasuringControl &measuring, Clock clock, Logger log)
 	: port_(port),
@@ -347,7 +370,7 @@ Outcome Alignment::remember(Outcome outcome)
 
 int64_t Alignment::elapsed_ms(uint64_t since) const
 {
-	return static_cast<int64_t>((clock_() - since) / ns_per_ms);
+	return static_cast<int64_t>((clock_() - since) / static_cast<uint64_t>(ns_per_ms));
 }
 
 void Alignment::warn(const std::string &line) const

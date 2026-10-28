@@ -13,6 +13,7 @@
 #include "alignment/write-steps.hpp"
 #include "log.hpp"
 #include "reading/session.hpp"
+#include "selection/selection-policy.hpp"
 
 namespace camera_sync {
 
@@ -38,6 +39,11 @@ struct AlignmentRequest {
 	SessionSnapshot session;
 	FrameRate rate;
 };
+
+// The request for the dock's choice: the ticked cameras in checklist order and the mic, each with its name from the
+// catalog.
+AlignmentRequest request_for(const std::vector<SourceInfo> &sources, const Choice &choice,
+			     const SessionSnapshot &session, FrameRate rate);
 
 // Runs Apply and Undo, each in one call on the UI thread, and keeps what lives between clicks: the Undo snapshot, the
 // "aligned after Apply" flag and the last result. It reaches OBS only through the settings port.

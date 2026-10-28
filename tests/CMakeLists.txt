@@ -13,6 +13,7 @@ target_sources(
     alignment/apply.cpp
     alignment/undo.cpp
     alignment/lifetime.cpp
+    alignment/request.cpp
     core/load-line.cpp
     core/log-lines.cpp
     detector/quirc.cpp
