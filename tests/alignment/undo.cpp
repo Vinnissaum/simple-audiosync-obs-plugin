@@ -156,6 +156,15 @@ TEST_CASE("undo restores the sync offset to the nanosecond and removes a filter 
 	REQUIRE(sub.apply().kind == OutcomeKind::Applied);
 	CHECK(sub.undo().kind == OutcomeKind::Undone);
 	CHECK(sub.port.offsets.at("mic") == -200400123);
+
+	// A hand edit after Apply that lands in the snapshot's millisecond is put back to the nanosecond as well.
+	AlignmentHarness edited;
+	edited.port.offsets["mic"] = -200400123;
+	edited.read({60, 10});
+	REQUIRE(edited.apply().kind == OutcomeKind::Applied);
+	edited.port.offsets["mic"] = -200000000;
+	CHECK(edited.undo().kind == OutcomeKind::Undone);
+	CHECK(edited.port.offsets.at("mic") == -200400123);
 }
 
 TEST_CASE("undo recreates a filter deleted by hand and leaves one the user removed or renamed")
@@ -203,6 +212,20 @@ TEST_CASE("undo writes only the values that differ and overwrites hand edits")
 		CHECK(writes_since(h, writes) ==
 		      Strings{"write_filter cam-a 10 on", "remove_filter cam-b", "write_offset mic 0"});
 		CHECK(h.port.filter("cam-a") == enabled(10));
+	}
+	SUBCASE("a filter that Apply only enabled")
+	{
+		AlignmentHarness h;
+		h.port.filters["cam-a"] = disabled(60);
+		h.read({40, 100});
+		REQUIRE(h.apply().kind == OutcomeKind::Applied); // Cam A's disabled 60 ms enabled, the mic to 100 ms
+		REQUIRE(h.port.filter("cam-a") == enabled(60));
+		const size_t writes = h.port.write_calls().size();
+
+		// The delay is the same; only the enabled state goes back.
+		CHECK(h.undo().kind == OutcomeKind::Undone);
+		CHECK(writes_since(h, writes) == Strings{"write_filter cam-a 60 off", "write_offset mic 0"});
+		CHECK(h.port.filter("cam-a") == disabled(60));
 	}
 }
 
@@ -281,6 +304,40 @@ TEST_CASE("undo that lands drops the snapshot and clears the readings without st
 	CHECK(h.alignment.status().last->kind == OutcomeKind::Undone);
 	// The session keeps its state: readings cleared, never started.
 	CHECK(h.measuring.calls == Strings{"clear"});
+}
+
+TEST_CASE("undo counts the duration from the answer and not the request")
+{
+	AlignmentHarness h;
+	apply_first_vector(h);
+	h.port.live = true;
+	h.while_asking = [&] {
+		h.now_ns += 3000 * ms;
+	};
+	h.port.on_write = [&] {
+		h.now_ns += 2 * ms;
+	};
+
+	// ALIGN-71 and ALIGN-75: Undo's duration, like Apply's, runs from the answer.
+	REQUIRE(h.undo().kind == OutcomeKind::Undone);
+	CHECK(h.logged(LogLevel::Info, "undo.result ok written=2 skipped=1 duration_ms=4"));
+}
+
+TEST_CASE("undo on air with nothing to change asks nothing and lands")
+{
+	AlignmentHarness h;
+	apply_first_vector(h);
+	// By hand, Cam B's filter goes and the mic is back at 0: every value already reads as the snapshot's.
+	h.port.filters.erase("cam-b");
+	h.port.offsets["mic"] = 0;
+	h.port.live = true;
+	const size_t writes = h.port.write_calls().size();
+
+	// ALIGN-35: nothing shifts, so there is nothing to ask; the question has no wording for no change.
+	CHECK(h.undo().kind == OutcomeKind::Undone);
+	CHECK(h.asked.empty());
+	CHECK(h.port.write_calls().size() == writes);
+	CHECK_FALSE(h.alignment.status().undo_available);
 }
 
 TEST_CASE("undo logs its plan and result with the undo prefix")

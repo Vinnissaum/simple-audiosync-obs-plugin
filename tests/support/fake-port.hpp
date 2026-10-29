@@ -23,8 +23,9 @@ struct FakePort : camera_sync::SettingsPort {
 	bool live = false; // streaming or recording
 
 	std::vector<std::string> calls;
-	std::set<size_t> refuse_writes; // these writes return false and change nothing
-	std::set<size_t> misread_after; // the next read after these writes returns a wrong value
+	std::set<size_t> refuse_writes;         // these writes return false and change nothing
+	std::set<size_t> misread_after;         // the next read after these writes returns a wrong value
+	std::set<size_t> misread_enabled_after; // the next filter read after these writes flips only enabled
 	size_t writes = 0;
 	std::function<void()> on_write; // runs at each write, before it lands
 
@@ -88,6 +89,10 @@ struct FakePort : camera_sync::SettingsPort {
 			state = state.present ? camera_sync::FilterState{true, state.delay_ms + 1, state.enabled}
 					      : camera_sync::FilterState{true, 1, true};
 		}
+		if (misread_enabled_pending) {
+			misread_enabled_pending = false;
+			state.enabled = !state.enabled;
+		}
 		return state;
 	}
 
@@ -139,6 +144,7 @@ struct FakePort : camera_sync::SettingsPort {
 
 private:
 	bool misread_pending = false;
+	bool misread_enabled_pending = false;
 
 	// Counts the write, runs on_write, and says whether it may land.
 	bool begin_write()
@@ -148,6 +154,8 @@ private:
 			on_write();
 		if (misread_after.count(index))
 			misread_pending = true;
+		if (misread_enabled_after.count(index))
+			misread_enabled_pending = true;
 		return refuse_writes.count(index) == 0;
 	}
 };

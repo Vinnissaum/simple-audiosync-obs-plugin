@@ -105,6 +105,26 @@ TEST_CASE("write steps fails a step the port refuses or reads back different")
 	// Nothing more from the steps is written: the mic is never touched.
 	for (const std::string &call : t.port.write_calls())
 		CHECK(call.rfind("write_offset mic 100000000", 0) != 0);
+
+	// A disabled target is held to the state written, though a disabled filter delays nothing at any delay: a
+	// read-back at another delay, or enabled, fails it, and the filter it created goes again.
+	for (bool delay_misread : {true, false}) {
+		CAPTURE(delay_misread);
+		FakePort port;
+		port.camera("cam-a");
+		Step step;
+		step.source = "cam-a";
+		step.name = "Cam A";
+		step.camera_target = FilterState{true, 120, false};
+		step.camera_found = absent;
+		if (delay_misread)
+			port.misread_after = {0};
+		else
+			port.misread_enabled_after = {0};
+		const StepsResult disabled = write_steps(port, {step});
+		CHECK_FALSE(disabled.ok);
+		CHECK(port.filter("cam-a") == absent);
+	}
 }
 
 TEST_CASE("write steps puts every value back in reverse order after a failure at each position")

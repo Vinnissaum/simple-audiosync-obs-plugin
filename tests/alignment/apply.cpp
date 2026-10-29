@@ -404,6 +404,15 @@ TEST_CASE("apply writes the mic's new sync offset in nanoseconds")
 	// ALIGN-23: s' = 100 ms.
 	CHECK(h.port.write_calls().back() == "write_offset mic 100000000");
 	CHECK(h.port.offsets.at("mic") == 100000000);
+
+	// The value written is s' in whole ms, not the nanoseconds found plus delta: -200,400,123 ns rounds to s = -200,
+	// delta is 200, and s' is 0.
+	AlignmentHarness sub;
+	sub.port.offsets["mic"] = -200400123;
+	sub.read({60, 10});
+	CHECK(sub.apply().kind == OutcomeKind::Applied);
+	CHECK(sub.port.write_calls().back() == "write_offset mic 0");
+	CHECK(sub.port.offsets.at("mic") == 0);
 }
 
 TEST_CASE("apply that fails a write at each position puts every value back and reports failed")
