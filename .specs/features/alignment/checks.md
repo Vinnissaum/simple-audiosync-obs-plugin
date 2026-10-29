@@ -400,10 +400,19 @@ Proof: `ctest --preset core -R "^the last result lasts until the next result, re
 - **CI:** `b4e8bc0`, run 40779228642, every job green: Check Formatting (clang-format, gersemi),
   Build and Test Core, Build for Ubuntu, macOS and Windows. That proves C64's CI walk, C86 and C87.
   Whether the ten integration cases ran or were skipped is in the Ubuntu job's log, which the API
-  gives only to an admin: the maintainer reads it. The walk line waits for that and the rig.
+  gives only to an admin: the maintainer reads it. `39d7015`, run 40796979774, every job green; user:
+  "passed, all ten integration cases say Passed" - libobs started under Xvfb and ran them, none
+  Skipped. Every `walk - CI` proof is met: C21, C41, C42, C43, C44, C45's first, C64's first, C77,
+  C78, C79, C80 (the cases ran, so nothing moves to the rig), C86, C87. Open: the `walk - rig` proofs
+  of C45, C46, C64, C65-C69 and C81. One `**Walked:**` line closes every walk proof at once, so it is
+  written after the rig session, with the CI run above and the rig's record.
 - **Running the proofs here:** `check_proofs.py` runs the proofs before its `Build:` line, and
   `mutate.py` restores sources without rebuilding, so run `cmake --build --preset core` before and
   after `check_proofs.py --mutations`, or the proofs judge the last mutant's objects.
+- **Pushed:** user: "push" - `44c8e78..39d7015` to `origin/main`, CI on the Verifier's fix. `44c8e78`
+  itself reached `origin/main` at 21:20, before the Verifier started, by a push this session did not
+  make. This note and `proofs.md` were committed afterwards, so `proofs.md` names `39d7015`: run
+  `check_proofs.py --mutations` again at the final `HEAD` after the rig session.
 - **Boundary:** every check with a `ctest` or command proof is green at `09a7b8f`: C1-C20, C21's
   first proof, C22-C40, C41's first proof, C42's first proof, C47-C63, C70-C76, C82-C85, C88, C89.
   Open: the `walk - CI` proofs of C21, C41, C42, C43, C44, C45, C64, C77-C80, C86 and C87, and the
