@@ -16,14 +16,16 @@ The pattern and its detector are reused from Audio Video Sync Dock (GPL-2.0-or-l
 
 ## Repository state
 
-Foundation, the TDD's phase 0, has landed (`.specs/features/foundation/`). The repository holds:
+Foundation (the TDD's phase 0), Reading (phase 2) and Alignment (phase 3) are built and green in CI on all three platforms; what is left of each needs the rig. Each feature's record is in `.specs/features/<feature>/`. Foundation and Reading were built with tlc-spec-driven (`spec.md`, `tasks.md`, `validation.md`). Alignment was built with tlc-spec-lean: `plan.md` and `checks.md` replace its `tasks.md`, which is kept and marked superseded, and `proofs.md` and `verification.md` hold the proof run and the independent Verifier's closed findings. The repository holds:
 
-- `core/`: the OBS-free static library `camera-sync-core`. It includes no libobs, OBS frontend or Qt header. It formats the load line and holds Sync Dock's detector, vendored in `core/detector/` with its notices (`core/media.hpp` and `core/log.hpp` are the core types and the injected logger that replace libobs's).
-- `src/`: the plugin module. It logs the load line and registers an empty "Camera Sync" dock.
-- `tests/`: doctest unit tests, CMake checks run by CTest, and `tests/fixtures/` (written by `tests/fixtures/generate.sh` with Sync Dock's generator, committed so tests never need Python).
+- `core/`: the OBS-free static library `camera-sync-core`. It includes no libobs, OBS frontend or Qt header. Sync Dock's detector is vendored in `core/detector/` with its notices, and `core/media.hpp` and `core/log.hpp` are the core types and the injected logger that replace libobs's. `core/reading/` holds the camera and mic pipelines, the estimator and the measuring session; `core/selection/` the camera and mic selection rules; `core/viewmodel/` the dock's view and its locale keys; `core/alignment/` the calculator, the settings port interface, the write-and-restore routine, and Apply and Undo; `core/log-lines.*` the format of every log line.
+- `src/`: the plugin module. The controller connects OBS to the session and the alignment; the "Camera Sync" dock shows the camera checklist, the mic picker, Start/Stop, Reset, Apply and Undo, and asks the on-air question; `src/obs/` holds the OBS adapters: the catalog, the selection store, the camera and mic taps, and `ObsSettingsPort`, the only code that writes a camera's "Camera Sync Delay" filter or the mic's Sync Offset.
+- `tests/`: doctest unit tests of the core, one folder per area with shared fakes in `tests/support/`; CMake checks run by CTest; the fuzz corpus replay of the QR payload parser; `tests/fixtures/` (written by `tests/fixtures/generate.sh` with Sync Dock's generator, committed so tests never need Python); and `tests/integration/`, which runs the settings port, Apply and Undo against a real libobs in the Linux plugin build only (see Tests).
 - `deps/quirc` (Git submodule, pinned to `542848d`), `third_party/doctest`, and `cmake/camera-sync/` (the project's own CMake checks).
 
-Not yet done: the Reading spikes, and the load check of the dock in OBS 30.0.0 and the latest stable (Foundation T16). Both need an OBS machine with two cameras that lag differently, a mic, and a phone to play the pattern. This WSL machine has no OBS or cameras, so anything that needs OBS is tested on that machine. Everything in `core/` and `tests/` builds and tests here.
+Not yet done, all on the rig: Foundation's load check in OBS 30.0.0 and the latest stable (T16), the two spikes that settle ADR-005 and ADR-007, Reading's rig tasks T34 to T37, and Alignment's rig checks (C45, C46, C64, C65 to C69 and C81, which keep its completion gate red). `.specs/rig-checklist.md` walks all of them in one session. The rig is an OBS machine with two cameras that lag differently (four for the performance checks), a mic, and a phone to play the pattern. Reading's T26 also still owes one deliberately red run of the CI fuzz step, and its test "estimator snapshots show each camera as it was at one instant while four threads push markers" failed once on the Windows runner and passed on the rerun, cause unknown.
+
+This WSL machine has no OBS or cameras, so anything that needs OBS is tested on the rig or in CI. Everything in `core/` and `tests/` except `tests/integration/` builds and tests here.
 
 ## Toolchain
 
