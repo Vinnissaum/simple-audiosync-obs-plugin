@@ -11,7 +11,7 @@ by the maintainer's rig session recorded there. That line is written only once b
 
 ## Intent
 
-89 checks in 10 slices · 2 one-way doors · 1 open, of which 0 block
+91 checks in 10 slices · 2 one-way doors · 1 open, of which 0 block
 
 ## Checks
 
@@ -152,6 +152,12 @@ Proof: `ctest --preset core -R "^undo whose restore fails reports restore failed
 
 **C40** - An Undo that lands drops the snapshot and the aligned flag, clears the readings, never starts the session (Measuring stays Measuring, Stopped stays Stopped), and returns "undone" with each snapshot camera's restored delay in Apply's order, 0 for a removed filter, then the mic's offset rounded half away from zero (AC 40)
 Proof: `ctest --preset core -R "^undo that lands drops the snapshot and clears the readings without starting$" --no-tests=error`
+
+**C90** - Undo's duration, like Apply's, runs from the answer: 3 s inside the question and 2 ms per write log `undo.result ok written=2 skipped=1 duration_ms=4` (AC 71, AC 75; appended for the Verifier's finding 5)
+Proof: `ctest --preset core -R "^undo counts the duration from the answer and not the request$" --no-tests=error`
+
+**C91** - On air, an Undo with nothing that differs from the snapshot asks nothing, writes nothing and lands (AC 35; appended for the Verifier's finding 6)
+Proof: `ctest --preset core -R "^undo on air with nothing to change asks nothing and lands$" --no-tests=error`
 
 ### S4 - The settings port touches only the plugin's filter and the mic's Sync Offset
 
@@ -366,7 +372,7 @@ Proof: `ctest --preset core -R "^the last result lasts until the next result, re
 - idempotency: C12, C31, C37, C8 (the third vector adds only the remainder)
 - authorization: n/a - no network, no account and no caller but the user at the dock; the write boundary inside OBS is C41 to C46
 - concurrency: C19 - values, sources and the collection change while the question's nested event loop runs; every write runs in one call on the UI thread
-- data lifecycle: C32, C57, C40
+- data lifecycle: C32, C57, C40, C91
 - dependency failure: C14, C33, C24 (a write OBS refuses or rewrites is caught by the read-back), C80
 - state transitions: C11, C28, C31, C40, C49
 - observability: C70 to C76
@@ -384,8 +390,20 @@ Proof: `ctest --preset core -R "^the last result lasts until the next result, re
   them, all "Passed". A case whose libobs did not start also returned "Passed", so that run does not
   show the cases ran: the integration tests now mark that case Skipped. User: "push it" - pushed
   `902e867..b4e8bc0`. Not answered: when to dispatch the Verifier, and `Mutations` 3 or 5.
-- **Dispatched:** none. The Verifier waits until the feature is held whole: the `walk - CI` proofs
-  need a push and the `walk - rig` proofs need the rig.
+- **Dispatched:** Verifier at `44c8e78` (diff `4f76047..44c8e78`, Mutations 3), 2026-10-28, on the
+  user's "ok, do it" after CI went green at `b4e8bc0`; the rig proofs stay open for the rig session.
+  No screens sub-agent: no criterion cites a capture. Returned: FAIL, six findings, all missing
+  tests; its three mutations survived. Fix pass `bcd271b`: the tests of C23, C24, C36 and C37 gain
+  the cases, C90 and C91 are appended; `check_proofs.py --mutations` at `bcd271b` gives 96 pass, the
+  22 walks open, and all three mutations killed; the Verifier's three exploratory mutations are
+  killed too. No second Verifier: the script shows the fix.
+- **CI:** `b4e8bc0`, run 40779228642, every job green: Check Formatting (clang-format, gersemi),
+  Build and Test Core, Build for Ubuntu, macOS and Windows. That proves C64's CI walk, C86 and C87.
+  Whether the ten integration cases ran or were skipped is in the Ubuntu job's log, which the API
+  gives only to an admin: the maintainer reads it. The walk line waits for that and the rig.
+- **Running the proofs here:** `check_proofs.py` runs the proofs before its `Build:` line, and
+  `mutate.py` restores sources without rebuilding, so run `cmake --build --preset core` before and
+  after `check_proofs.py --mutations`, or the proofs judge the last mutant's objects.
 - **Boundary:** every check with a `ctest` or command proof is green at `09a7b8f`: C1-C20, C21's
   first proof, C22-C40, C41's first proof, C42's first proof, C47-C63, C70-C76, C82-C85, C88, C89.
   Open: the `walk - CI` proofs of C21, C41, C42, C43, C44, C45, C64, C77-C80, C86 and C87, and the

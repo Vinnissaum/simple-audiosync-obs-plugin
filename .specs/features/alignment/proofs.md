@@ -1,8 +1,8 @@
 # alignment proofs
 
-**HEAD**: 09a7b8f
+**HEAD**: bcd271b
 **Tree**: clean
-**Result**: 94 pass, 22 fail; mutations 0 killed, 0 not
+**Result**: 96 pass, 22 fail; mutations 3 killed, 0 not
 
 | Check | Proof | Ran | Passed | Result |
 | --- | --- | --- | --- | --- |
@@ -58,6 +58,8 @@
 | C38 | `ctest --preset core -R "^undo that fails a write at each position puts back the values from after apply$" --no` | count unknown | - | pass |
 | C39 | `ctest --preset core -R "^undo whose restore fails reports restore failed and drops the snapshot$" --no-tests=e` | count unknown | - | pass |
 | C40 | `ctest --preset core -R "^undo that lands drops the snapshot and clears the readings without starting$" --no-te` | count unknown | - | pass |
+| C90 | `ctest --preset core -R "^undo counts the duration from the answer and not the request$" --no-tests=error` | count unknown | - | pass |
+| C91 | `ctest --preset core -R "^undo on air with nothing to change asks nothing and lands$" --no-tests=error` | count unknown | - | pass |
 | C41 | `test "$(grep -cE '^\s*virtual .*\) = 0;' core/alignment/settings-port.hpp)" -eq 8` | count unknown | - | pass |
 | C41 | `walk - CI: the Ubuntu job's integration case "settings port answers an unknown uuid with nothing" passes` | - | - | **no Walked line** |
 | C42 | `ctest --preset core -R "^the recognised filter names hold only camera sync delay$" --no-tests=error` | count unknown | - | pass |
@@ -122,3 +124,11 @@
 | C89 | `ctest --preset core -R "^the last result lasts until the next result, reset or collection switch$" --no-tests=` | count unknown | - | pass |
 | Build | `cmake --preset core` | - | - | pass |
 | Build | `cmake --build --preset core` | - | - | pass |
+
+## Mutations
+
+| Mutation | Location | Killed |
+| --- | --- | --- |
+| C23: Apply writes the mic as the ns found plus delta ms, not s' x 1,000,000 | `core/alignment/alignment.cpp:133` | yes |
+| C36/C37: Undo's diff compares a filter's presence and delay but not its enabled state | `core/alignment/alignment.cpp:202` | yes |
+| C24: a camera's read-back compares the effective delay, not the state written | `core/alignment/write-steps.cpp:25` | yes |

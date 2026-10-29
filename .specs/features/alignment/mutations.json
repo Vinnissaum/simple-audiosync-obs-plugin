@@ -1,0 +1,23 @@
+[
+  {
+    "file": "core/alignment/alignment.cpp",
+    "old": "step.mic_target_ns = plan.new_offset_ms * ns_per_ms;",
+    "new": "step.mic_target_ns = found->sync_offset_ns + plan.delta_ms * ns_per_ms;",
+    "proof": "export PATH=$HOME/.local/bin:$PATH && cmake --build --preset core && ctest --preset core -R \"^apply writes the mic's new sync offset in nanoseconds$\" --no-tests=error",
+    "label": "C23: Apply writes the mic as the ns found plus delta ms, not s' x 1,000,000"
+  },
+  {
+    "file": "core/alignment/alignment.cpp",
+    "old": "if (found->filters[i] == snapshot.cameras[i].second)",
+    "new": "if (found->filters[i].present == snapshot.cameras[i].second.present && found->filters[i].delay_ms == snapshot.cameras[i].second.delay_ms)",
+    "proof": "export PATH=$HOME/.local/bin:$PATH && cmake --build --preset core && ctest --preset core -R \"^undo writes only the values that differ and overwrites hand edits$\" --no-tests=error",
+    "label": "C36/C37: Undo's diff compares a filter's presence and delay but not its enabled state"
+  },
+  {
+    "file": "core/alignment/write-steps.cpp",
+    "old": "return actual && *actual == step.camera_target;",
+    "new": "return actual && actual->effective_ms() == step.camera_target.effective_ms();",
+    "proof": "export PATH=$HOME/.local/bin:$PATH && cmake --build --preset core && ctest --preset core -R \"^write steps fails a step the port refuses or reads back different$\" --no-tests=error",
+    "label": "C24: a camera's read-back compares the effective delay, not the state written"
+  }
+]
